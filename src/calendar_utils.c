@@ -10,12 +10,6 @@ uint16_t get_week_number(uint16_t year, uint8_t month, uint8_t day) {
     return atoi(buf) + 1; // Adding 1 because week numbers start from 0
 }
 
-/*
-uint8_t day_of_week(uint16_t year, uint8_t month, uint8_t day) {
-    return ((day += month < 3 ? year-- : year - 2, 23*month/9 + day + 4 + year/4- year/100 + year/400)%7);
-}
-*/
-
 uint8_t day_of_week(uint16_t year, uint8_t month, uint8_t day) {
     // Zeller's Congruence algorithm
     if (month < 3) {
@@ -72,79 +66,79 @@ uint8_t last_day_of_month(uint8_t month, bool leap_year) {
     }
 }
 
-char *month_name(uint8_t month) {
-    static char name[4];
+const char *month_name(uint8_t month) {
+    const char *name;
     switch (month) {
         case 1:
-            strcpy(name, "Jan");
+    	    name = "Jan";
             break;
         case 2:
-            strcpy(name, "Feb");
+    	    name = "Feb";
             break;
         case 3:
-            strcpy(name, "Mar");
+            name = "Mar";
             break;
         case 4:
-            strcpy(name, "Apr");
+            name = "Apr";
             break;
         case 5:
-            strcpy(name, "May");
+            name = "May";
             break;
         case 6:
-            strcpy(name, "Jun");
+            name = "Jun";
             break;
         case 7:
-            strcpy(name, "Jul");
+            name = "Jul";
             break;
         case 8:
-            strcpy(name, "Aug");
+	        name = "Aug";
             break;
         case 9:
-            strcpy(name, "Sep");
+	        name = "Sep";
             break;
         case 10:
-            strcpy(name, "Oct");
+	        name = "Oct";
             break;
         case 11:
-            strcpy(name, "Nov");
+            name = "Nov";
             break;
         case 12:
-            strcpy(name, "Dec");
+            name = "Dec";
             break;
         default:
-            strcpy(name, "FUK");
+            name = "FUK";
             break;
     }
     return name;
 }
 
-char *week_name(uint8_t week_day) {
-    static char name[4];
+const char *week_name(uint8_t week_day) {
+    const char *name;
 
     switch (week_day) {
     case 0:
-        strcpy(name, "SUN");
+        name = "SUN";
         break;
     case 1:
-        strcpy(name, "MON");
+        name = "MON";
         break;
     case 2:
-        strcpy(name, "TUE");
+        name = "TUE";
         break;
     case 3:
-        strcpy(name, "WED");
+        name = "WED";
         break;
     case 4:
-        strcpy(name, "THU");
+        name = "THU";
         break;
     case 5:
-        strcpy(name, "FRI");
+        name = "FRI";
         break;
     case 6:
-        strcpy(name, "SAT");
+        name = "SAT";
         break;
     default:
-        strcpy(name, "FUK");
+        name = "FUK";
         break;
     }
     return name;

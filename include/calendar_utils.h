@@ -12,5 +12,5 @@ uint8_t last_day_of_month(uint8_t month, bool leap_year);
 
 bool is_leap_year(uint16_t year);
 
-char *month_name(uint8_t month);
-char *week_name(uint8_t week_day);
+const char *month_name(uint8_t month);
+const char *week_name(uint8_t week_day);
