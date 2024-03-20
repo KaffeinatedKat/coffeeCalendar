@@ -44,7 +44,7 @@ void render_calendar(lv_obj_t *cont) {
     time_t t = time(NULL);
     struct tm tm = *localtime(&t);
     int16_t current_year = tm.tm_year + 1900;
-    int8_t current_month = tm.tm_mon;// + 1;
+    int8_t current_month = tm.tm_mon + 1;
     int8_t current_day = tm.tm_mday;
     int8_t start_day = day_of_week(current_year, current_month, current_day);
     int8_t end_day = last_day_of_month(current_month, is_leap_year(current_year));
@@ -78,7 +78,7 @@ void render_calendar(lv_obj_t *cont) {
     hashmap_set(map, &(struct calendars){ .name = "john.ics", .color = 0x276221 });
     hashmap_set(map, &(struct calendars){ .name = "family.ics", .color = 0xff781f });
 
-    lv_obj_set_size(cont, 1920, 1080);
+    lv_obj_set_size(cont, SCREEN_WIDTH, SCREEN_HEIGHT);
     lv_obj_set_style_pad_all(cont, LV_STATE_DEFAULT, 0);
     lv_obj_set_style_radius(cont, LV_STATE_DEFAULT, 0);
     lv_obj_center(cont);
@@ -281,14 +281,15 @@ int main(void)
     while(1) {
         lv_timer_handler();
 
-        sleep(1);
+        sleep(CALENDAR_REFRESH_TIME * 60);
 
         // Sync the new online calendar data (if applicible)
-
+        // use cron to download new ical files and convert them with bin/ical2ccal
+        // FIXME: include builtin online calendar refreshing
 
         // Clean up the screen and redraw it
-        //lv_obj_clean(cont);
-        //render_calendar(map, cont);
+        lv_obj_clean(cont);
+        render_calendar(cont);
     }
 
     return 0;
