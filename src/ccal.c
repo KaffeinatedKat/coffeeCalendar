@@ -68,11 +68,15 @@ char *get_event_end_time(char *event) {
 
 bool get_event_all_day(char *event) {
     char *all_day = regex_parse(event, "%AD(.*?)%AD");
+    bool return_value = false;
+
     if (strcmp(all_day, "Yes") == 0) {
-        free(all_day);
-        return true;
+        return_value = true;
+    } else {
+        return_value = false;
     }
-    return false;
+    free(all_day);
+    return return_value;
 }
 
 uint16_t get_number_of_events(FILE *ccal_event_list) {
