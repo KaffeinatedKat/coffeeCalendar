@@ -33,6 +33,7 @@
 #include <stdlib.h>
 #include <libical/ical.h>
 #include <time.h>
+#include <string.h>
 
 #include "config.h"
 
@@ -92,16 +93,25 @@ void process_event(icalcomponent *event, const char *calendar_name) {
         icaltimezone *local_zone = icaltimezone_get_builtin_timezone("localtime");
         time_t epoch_time = icaltime_as_timet_with_zone(start_time, local_zone);
 
-        struct tm *time_info = localtime(&epoch_time);
+        struct tm *time_info = localtime(&epoch_time);//localtime(&epoch_time);
+
+        // Change event timezone if it's not in the current zone
+        if (start_time.zone && strcmp(icaltimezone_get_tzid(start_time.zone), "UTC") == 0) {
+            start_time.year = time_info->tm_year + 1900;
+            start_time.month = time_info->tm_mon + 1;
+            start_time.day = time_info->tm_mday;
+            start_time.hour = time_info->tm_hour;
+            start_time.minute = time_info->tm_min;
+        }
 
         // Check if it's an all-day event
         if (icaltime_is_date(start_time) != 0) {
             printf("%%ADYes%%AD ");
-            printf("%%D%04d/%02d/%02d%%D ", time_info->tm_year + 1900, time_info->tm_mon + 1, time_info->tm_mday);
+            printf("%%D%04d/%02d/%02d%%D ", start_time.year, start_time.month, start_time.day);
         } else {
             printf("%%ADNo%%AD ");
-            printf("%%D%04d/%02d/%02d%%D ", time_info->tm_year + 1900, time_info->tm_mon + 1, time_info->tm_mday);
-            printf("%%B%02d:%02d%%B ", time_info->tm_hour, time_info->tm_min);
+            printf("%%D%04d/%02d/%02d%%D ", start_time.year, start_time.month, start_time.day);
+            printf("%%B%02d:%02d%%B ", start_time.hour, start_time.minute);
         }
     } else {
         printf("%%ADNo%%AD ");  // Placeholder for missing start date
@@ -118,9 +128,15 @@ void process_event(icalcomponent *event, const char *calendar_name) {
 
         struct tm *time_info = localtime(&epoch_time);
 
+        // Change event timezone if it's not in the current zone
+        if (end_time.zone && strcmp(icaltimezone_get_tzid(end_time.zone), "UTC") == 0) {
+            end_time.hour = time_info->tm_hour;
+            end_time.minute = time_info->tm_min;
+        }
+
         // Check if it's an all-day event
         if (icaltime_is_date(end_time) == 0) {
-            printf("%%E%02d:%02d%%E ", time_info->tm_hour, time_info->tm_min);
+            printf("%%E%02d:%02d%%E ", end_time.hour, end_time.minute);
         }
     } else {
         printf("%%E0000/00/00%%E ");  // Placeholder for missing end date
