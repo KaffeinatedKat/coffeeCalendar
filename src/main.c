@@ -262,7 +262,7 @@ void render_calendar(lv_obj_t *cont) {
     lv_obj_set_style_pad_column(cont, 0, 0);
 }
 
-int main(void)
+int main(int argc, char *argv[])
 {
     lv_init();
 

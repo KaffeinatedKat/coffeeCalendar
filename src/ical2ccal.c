@@ -31,6 +31,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <libical/ical.h>
 #include <time.h>
 #include <string.h>
@@ -145,7 +146,7 @@ void process_event(icalcomponent *event, const char *calendar_name) {
     printf("%%C%s%%C\n", calendar_name);  // Replace 'file_name' with your actual file name
 }
 
-int is_exclude_date(icalcomponent *event, icaltimetype date) {
+bool is_exclude_date(icalcomponent *event, icaltimetype date) {
     icaltimetype exdate;
     icalproperty *property;
 
@@ -155,10 +156,11 @@ int is_exclude_date(icalcomponent *event, icaltimetype date) {
         exdate = icalproperty_get_exdate(property);
 
         if (icaltime_to_timet(exdate) == icaltime_to_timet(date)) {
-            return 1;
+            printf("harhar he gone\n");
+            return true;
         }
     }
-    return 0;
+    return false;
 }
 
 void add_recurring_events(icalcomponent *event, const char *calendar_name) {
@@ -173,11 +175,15 @@ void add_recurring_events(icalcomponent *event, const char *calendar_name) {
 
     // Expand the event out 5 years ahead
     //
-    // This function is fucked, and if we input any date as the 
-    // start date it outputs the wrong expanded epoch times. If
-    // we input the start date of the original unexpanded date
-    // we get the correct times. So we expand out 5 years and 
-    // discard anything too far away from the current date
+    // The function is fucked, if we unput any date that is not
+    // the start date for the recurring event then it does not 
+    // expand the event properly and we get the wrong dates.
+    // We we expand the event 5 years from the original, and
+    // ignore anything not within 1 month of the current
+    // date
+    // This WILL break if the current date is 5 years away
+    // from the original start date of the recurring event
+
     time_t array[1825];
     int count = icalrecur_expand_recurrence(
         icalrecurrencetype_as_string_r(&rrule),
@@ -214,7 +220,11 @@ void add_recurring_events(icalcomponent *event, const char *calendar_name) {
 
         // Set the new date for the expanded event
         if (start_property) {
+            expanded_event_time.day += 1;
             icalproperty_set_dtstart(start_property, expanded_event_time);
+            expanded_event_time.day -= 1;
+            // The events are all 1 day behind. Revert this after creating
+            // the event as to not mess with the excluded date check
         }
 
         // Add the event to the list if it's not an excluded date
