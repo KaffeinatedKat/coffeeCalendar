@@ -173,6 +173,11 @@ void add_recurring_events(icalcomponent *event, const char *calendar_name) {
     struct icalrecurrencetype rrule = icalproperty_get_rrule(rrule_property);
     struct icaltimetype start_time = icalproperty_get_dtstart(start_property);
 
+    icaltimezone *local_zone = icaltimezone_get_builtin_timezone("localtime");
+    time_t epoch_time = icaltime_as_timet_with_zone(start_time, local_zone);
+
+    struct tm *time_info = localtime(&epoch_time);//localtime(&epoch_time);
+
     // Expand the event out 5 years ahead
     //
     // The function is fucked, if we unput any date that is not
@@ -197,7 +202,7 @@ void add_recurring_events(icalcomponent *event, const char *calendar_name) {
         struct tm *local_time = localtime(&array[i]);
 
         icalcomponent *expanded_event = event;
-        icaltimetype expanded_event_time = icaltime_from_timet_with_zone(array[i], 0, icaltimezone_get_builtin_timezone(tzname[0]));
+        icaltimetype expanded_event_time = icaltime_from_timet_with_zone(array[i], 0, icaltimezone_get_builtin_timezone("UTC"));
 
         // See line 149
         // Event happens last year
@@ -220,11 +225,7 @@ void add_recurring_events(icalcomponent *event, const char *calendar_name) {
 
         // Set the new date for the expanded event
         if (start_property) {
-            expanded_event_time.day += 1;
             icalproperty_set_dtstart(start_property, expanded_event_time);
-            expanded_event_time.day -= 1;
-            // The events are all 1 day behind. Revert this after creating
-            // the event as to not mess with the excluded date check
         }
 
         // Add the event to the list if it's not an excluded date
