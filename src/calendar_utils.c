@@ -11,7 +11,7 @@ uint16_t get_week_number(uint16_t year, uint8_t month, uint8_t day) {
 }
 
 uint8_t day_of_week(uint16_t year, uint8_t month, uint8_t day) {
-    return (day += month < 3 ? year-- : year - 2, 23*month/9 + day + 4 + year/4- year/100 + year/400)%7;  
+    return ((day += month < 3 ? year-- : year - 2, 23*month/9 + day + 4 + year/4- year/100 + year/400)%7);
 }
 
 bool is_leap_year(uint16_t year) {

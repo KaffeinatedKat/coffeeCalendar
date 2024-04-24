@@ -52,7 +52,7 @@ void render_calendar(lv_obj_t *cont) {
     // calendar tiles
     int8_t current_tile_number = get_week_number(current_year, current_month, current_day);
     int8_t current_position = THIS_MONTH;
-    int8_t this_month_day = current_day;
+    int8_t this_month_day = 1;
     int8_t next_month_day = 1;
     int8_t modified_month = current_month;
     int16_t modified_year = current_year;
@@ -74,8 +74,9 @@ void render_calendar(lv_obj_t *cont) {
 
     // Calendar names & colors
     // (program will segfault if your calendar name is not placed in the hashmap)
-    hashmap_set(map, &(struct calendars){ .name = "basic.ics", .color = 0x023E8A });
-    hashmap_set(map, &(struct calendars){ .name = "john.ics", .color = 0x276221 });
+    hashmap_set(map, &(struct calendars){ .name = "mom.ics", .color = 0x023E8A });
+    hashmap_set(map, &(struct calendars){ .name = "john_work.ics", .color = 0x276221 });
+    hashmap_set(map, &(struct calendars){ .name = "keith_work.ics", .color = 0x276221 });
     hashmap_set(map, &(struct calendars){ .name = "family.ics", .color = 0xff781f });
 
     lv_obj_set_size(cont, SCREEN_WIDTH, SCREEN_HEIGHT);
@@ -89,7 +90,7 @@ void render_calendar(lv_obj_t *cont) {
     if (current_day - start_day <= 0) {
         current_position = LAST_MONTH;
         month_bleed = true;
-        first_tile_day = last_day_of_month(current_month - 1, is_leap_year(current_year)) - start_day + 2;
+        first_tile_day = last_day_of_month(current_month - 1, is_leap_year(current_year)) + (current_day - start_day);
     // Otherwise we can just count back x number of times
     } else {
         first_tile_day = current_day - start_day;
@@ -125,7 +126,7 @@ void render_calendar(lv_obj_t *cont) {
             tile_x += TILE_W;
 
             if (r == 0) {
-                printf("%s\n", week_name(c));
+                printf("[New Tile]\n\n) Tile weekday: %s\n", week_name(c));
                 lv_obj_t *tile = lv_obj_create(cont);
                 lv_obj_set_size(tile, TILE_W, 40);
                 lv_obj_set_pos(tile, tile_x - 1, 0);
@@ -167,48 +168,39 @@ void render_calendar(lv_obj_t *cont) {
                 lv_obj_set_style_bg_color(tile, lv_color_hex(CURRENT_DAY_BG_COLOR), 0);
             }
 
-            // Days before the beginning of the month
-            if (box_number < start_day + 1) {
-                current_tile_number = first_tile_day++;
-                // If the current_tile_number exceeds the last day of the last month
-                // then we need to set it to 1 so it starts counting for this month's
-                // days
+            // Count the tiles up
+            current_tile_number = first_tile_day++;
 
-                if (current_tile_number > last_day_of_month(current_month - 1, is_leap_year(current_year))) {
-                    first_tile_day = 1;
-                    current_tile_number = first_tile_day;
-                    current_position = THIS_MONTH;
-                } else if (month_bleed) {
-                    // Show events for december of last year if the current month is january
-                    if (current_month == 1) {
-                        modified_year--;
-                        modified_month = 12;
-                    } else {
-                        modified_month--;
-                    }
-                }
-
-            // Days after the end of the month
-            } else if (current_tile_number >= end_day || current_position == NEXT_MONTH) {
-                current_position = NEXT_MONTH;
-
-                current_tile_number = next_month_day++;
-                // Show events for january of next year if the current month is december
-                if (current_month == 12) {
-                    modified_year++;
-                    modified_month = 1;
-                // Show events for the next month
+            if (current_position == LAST_MONTH) {
+                // Adjust for year changes
+                if (current_month == 1) {
+                    modified_month = 12;
+                    modified_year = current_year - 1;
                 } else {
-                    modified_month++;
+                    modified_month = current_month - 1;
                 }
 
-            // Days inside the current month
-            } else if (current_position == THIS_MONTH) {
-                current_tile_number = this_month_day++;
-            }
+                if (current_tile_number >= last_day_of_month(current_month - 1, is_leap_year(current_year)) - 1) {
+                    first_tile_day = this_month_day++;
+                    current_position = THIS_MONTH;
+                }
 
-            if (c == 0) {
-                week_start_tile_number = current_tile_number;
+            } else if (current_position == THIS_MONTH) {
+                // Adjust for year changes
+                if (current_month == 12) {
+                    modified_month = 1;
+                    modified_year = current_year + 1;
+                } else {
+                    modified_month = current_month;
+                }
+
+                if (current_tile_number >= last_day_of_month(current_month - 1, is_leap_year(current_year)) - 1) {
+                    first_tile_day = next_month_day++;
+                    current_position = NEXT_MONTH;
+                }
+
+            } else if (current_position == NEXT_MONTH) {
+                modified_month = current_month + 1;
             }
 
             event_list = get_events(CCAL_LOCATION, modified_year, modified_month, current_tile_number);
