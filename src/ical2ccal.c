@@ -179,7 +179,7 @@ void add_recurring_events(icalcomponent *event, const char *calendar_name) {
     time_t array[1825];
     int count = icalrecur_expand_recurrence(
         icalrecurrencetype_as_string_r(&rrule),
-        icaltime_to_timet(start_time),
+        icaltime_as_timet(start_time),
         max_number_of_events,
         array
     );
