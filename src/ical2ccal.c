@@ -38,18 +38,6 @@
 
 #include "config.h"
 
-time_t icaltime_to_timet(const icaltimetype ical_time) {
-    struct tm timeinfo;
-    timeinfo.tm_year = ical_time.year - 1900;
-    timeinfo.tm_mon = ical_time.month - 1;
-    timeinfo.tm_mday = ical_time.day;
-    timeinfo.tm_hour = ical_time.hour;
-    timeinfo.tm_min = ical_time.minute;
-    timeinfo.tm_sec = ical_time.second;
-
-    return mktime(&timeinfo);
-}
-
 char *read_file(const char *filename) {
     FILE *file = fopen(filename, "r");
     if (file == NULL) {
@@ -155,8 +143,7 @@ bool is_exclude_date(icalcomponent *event, icaltimetype date) {
              property = icalcomponent_get_next_property(event, ICAL_EXDATE_PROPERTY)) {
         exdate = icalproperty_get_exdate(property);
 
-        if (icaltime_to_timet(exdate) == icaltime_to_timet(date)) {
-            printf("harhar he gone\n");
+        if (icaltime_as_timet(exdate) == icaltime_as_timet(date)) {
             return true;
         }
     }
@@ -202,7 +189,7 @@ void add_recurring_events(icalcomponent *event, const char *calendar_name) {
         struct tm *local_time = localtime(&array[i]);
 
         icalcomponent *expanded_event = event;
-        icaltimetype expanded_event_time = icaltime_from_timet_with_zone(array[i], 0, icaltimezone_get_builtin_timezone("UTC"));
+        icaltimetype expanded_event_time = icaltime_from_timet_with_zone(array[i], 0, icaltimezone_get_builtin_timezone(start_time.zone));
 
         // See line 149
         // Event happens last year
