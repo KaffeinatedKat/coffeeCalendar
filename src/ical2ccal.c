@@ -82,7 +82,7 @@ void process_event(icalcomponent *event, const char *calendar_name) {
         icaltimezone *local_zone = icaltimezone_get_builtin_timezone("localtime");
         time_t epoch_time = icaltime_as_timet_with_zone(start_time, local_zone);
 
-        struct tm *time_info = localtime(&epoch_time);//localtime(&epoch_time);
+        struct tm *time_info = localtime(&epoch_time);
 
         // Change event timezone if it's not in the current zone
         if (start_time.zone && strcmp(icaltimezone_get_tzid(start_time.zone), "UTC") == 0) {
@@ -191,9 +191,12 @@ void add_recurring_events(icalcomponent *event, const char *calendar_name) {
         icalcomponent *expanded_event = event;
         icaltimetype expanded_event_time = icaltime_from_timet_with_zone(array[i], 0, icaltimezone_get_builtin_timezone(start_time.zone));
 
+
         // See line 149
         // Event happens last year
         if (expanded_event_time.year < today.year) {
+            continue;
+        } else if (expanded_event_time.year > today.year) {
             continue;
         // Event happens more than 1 month backward
         } else if (expanded_event_time.month < today.month - 1) {
