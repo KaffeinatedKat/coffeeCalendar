@@ -150,8 +150,9 @@ bool is_exclude_date(icalcomponent *event, icaltimetype date) {
     return false;
 }
 
-void add_recurring_events(icalcomponent *event, const char *calendar_name) {
+void add_recurring_events(icalcomponent *ical_root, icalcomponent *event, const char *calendar_name) {
     int max_number_of_events = 1825;
+    bool already_exists = false;
 
     icalproperty *rrule_property = icalcomponent_get_first_property(event, ICAL_RRULE_PROPERTY);
     icalproperty *start_property = icalcomponent_get_first_property(event, ICAL_DTSTART_PROPERTY);
@@ -185,6 +186,7 @@ void add_recurring_events(icalcomponent *event, const char *calendar_name) {
     );
     
     for (int i = 0; i < max_number_of_events; ++i) {
+        already_exists = false;
         icaltimetype today = icaltime_today();
         struct tm *local_time = localtime(&array[i]);
 
@@ -206,6 +208,8 @@ void add_recurring_events(icalcomponent *event, const char *calendar_name) {
             break;
         }
 
+        printf("day %d/%d/%d\n", expanded_event_time.year, expanded_event_time.month, expanded_event_time.day);
+
         icalproperty *start_property = icalcomponent_get_first_property(event, ICAL_DTSTART_PROPERTY);
 
         // Preserve the all day status of expanded events
@@ -218,9 +222,37 @@ void add_recurring_events(icalcomponent *event, const char *calendar_name) {
             icalproperty_set_dtstart(start_property, expanded_event_time);
         }
 
+        icalproperty *recurrence_id;
+
+        // Loop through each event to handle modified recurring events
+        for (icalcomponent *other_event = icalcomponent_get_first_component(ical_root, ICAL_VEVENT_COMPONENT);
+             other_event != NULL;
+             other_event = icalcomponent_get_next_component(ical_root, ICAL_VEVENT_COMPONENT)) {
+            recurrence_id = icalcomponent_get_first_property(other_event, ICAL_RECURRENCEID_PROPERTY);
+            // Check if the event has a recurrence_id and
+            if (recurrence_id) {
+                struct icaltimetype recurrence_id_time = icalproperty_get_recurrenceid(recurrence_id);
+
+                // If the recurrence_id is the same as the start time of the 
+                // expanded event
+                if (icaltime_compare(expanded_event_time, recurrence_id_time) == 0) {
+                    printf("      uid: %s\nother uid: %s\ncheck: %d\n", icalcomponent_get_uid(event), icalcomponent_get_uid(other_event), strcmp(icalcomponent_get_uid(event), icalcomponent_get_uid(other_event)));
+                    // And the UID's are the same
+                    if (strcmp(icalcomponent_get_uid(event), icalcomponent_get_uid(other_event)) == 0) {
+                        // Then this event has been modified and placed elsewhere,
+                        // and we must exclude it to prevent duplicate events
+                        already_exists = true;
+                    }
+                }
+            }
+        }
+
+
         // Add the event to the list if it's not an excluded date
-        if (array[i] != 0 && !is_exclude_date(event, expanded_event_time)) {
+        if (array[i] != 0 && !is_exclude_date(event, expanded_event_time) && !already_exists) {
             process_event(expanded_event, calendar_name);
+        } else {
+            printf("exclude date!\n");
         }
 
         icalcomponent_free(expanded_event);
@@ -239,8 +271,10 @@ void process_events(icalcomponent *ical_root, const char *calendar_name) {
 
         // Recurring event
         if (rrule_property) {
-            add_recurring_events(event, calendar_name);
+            printf("\nThis event repeats\n");
+            add_recurring_events(icalparser_parse_string(read_file(calendar_name)), event, calendar_name);
         } else {
+            printf("\nThis event does not repeat\n");
             process_event(event, calendar_name);
         }
     }
