@@ -203,12 +203,10 @@ void add_recurring_events(icalcomponent *ical_root, icalcomponent *event, const 
         // Event happens more than 1 month backward
         } else if (expanded_event_time.month < today.month - 1) {
             continue;
-        // Event happens more than 1 month forward
-        } else if (expanded_event_time.month > today.month + 1) {
+        // Event happens more than 2 months forward
+        } else if (expanded_event_time.month > today.month + 2) {
             break;
         }
-
-        printf("day %d/%d/%d\n", expanded_event_time.year, expanded_event_time.month, expanded_event_time.day);
 
         icalproperty *start_property = icalcomponent_get_first_property(event, ICAL_DTSTART_PROPERTY);
 
@@ -236,7 +234,6 @@ void add_recurring_events(icalcomponent *ical_root, icalcomponent *event, const 
                 // If the recurrence_id is the same as the start time of the 
                 // expanded event
                 if (icaltime_compare(expanded_event_time, recurrence_id_time) == 0) {
-                    printf("      uid: %s\nother uid: %s\ncheck: %d\n", icalcomponent_get_uid(event), icalcomponent_get_uid(other_event), strcmp(icalcomponent_get_uid(event), icalcomponent_get_uid(other_event)));
                     // And the UID's are the same
                     if (strcmp(icalcomponent_get_uid(event), icalcomponent_get_uid(other_event)) == 0) {
                         // Then this event has been modified and placed elsewhere,
@@ -251,8 +248,6 @@ void add_recurring_events(icalcomponent *ical_root, icalcomponent *event, const 
         // Add the event to the list if it's not an excluded date
         if (array[i] != 0 && !is_exclude_date(event, expanded_event_time) && !already_exists) {
             process_event(expanded_event, calendar_name);
-        } else {
-            printf("exclude date!\n");
         }
 
         icalcomponent_free(expanded_event);
@@ -271,10 +266,8 @@ void process_events(icalcomponent *ical_root, const char *calendar_name) {
 
         // Recurring event
         if (rrule_property) {
-            printf("\nThis event repeats\n");
             add_recurring_events(icalparser_parse_string(read_file(calendar_name)), event, calendar_name);
         } else {
-            printf("\nThis event does not repeat\n");
             process_event(event, calendar_name);
         }
     }

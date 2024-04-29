@@ -24,6 +24,7 @@ enum current_position {
     LAST_MONTH,
     THIS_MONTH,
     NEXT_MONTH,
+    NEXT_NEXT_MONTH,
 };
 
 // <----- Hashmap.c stuff ----->
@@ -126,7 +127,6 @@ void render_calendar(lv_obj_t *cont) {
             tile_x += TILE_W;
 
             if (r == 0) {
-                printf("[New Tile]\n\n) Tile weekday: %s\n", week_name(c));
                 lv_obj_t *tile = lv_obj_create(cont);
                 lv_obj_set_size(tile, TILE_W, 40);
                 lv_obj_set_pos(tile, tile_x - 1, 0);
@@ -201,6 +201,12 @@ void render_calendar(lv_obj_t *cont) {
 
             } else if (current_position == NEXT_MONTH) {
                 modified_month = current_month + 1;
+                if (current_tile_number > last_day_of_month(modified_month, is_leap_year(current_year)) - 1) {
+                    first_tile_day = 1;
+                    current_position = NEXT_NEXT_MONTH;
+                }
+            } else if (current_position == NEXT_NEXT_MONTH) {
+                modified_month = current_month + 2;
             }
 
             event_list = get_events(CCAL_LOCATION, modified_year, modified_month, current_tile_number);
@@ -225,6 +231,7 @@ void render_calendar(lv_obj_t *cont) {
                 event_pos += 50;
 
                 lv_obj_t * event_label = lv_label_create(event_container);
+                lv_obj_set_style_text_color(event_label, lv_color_hex(0xffffff), 0);
 
                 if (!event_all_day) {
                     char *event_start_time = get_event_start_time(result);
