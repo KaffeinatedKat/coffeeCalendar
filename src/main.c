@@ -180,7 +180,7 @@ void render_calendar(lv_obj_t *cont) {
                     modified_month = current_month - 1;
                 }
 
-                if (current_tile_number >= last_day_of_month(current_month - 1, is_leap_year(current_year)) - 1) {
+                if (current_tile_number > last_day_of_month(current_month - 1, is_leap_year(current_year)) - 1) {
                     first_tile_day = this_month_day++;
                     current_position = THIS_MONTH;
                 }
@@ -194,7 +194,7 @@ void render_calendar(lv_obj_t *cont) {
                     modified_month = current_month;
                 }
 
-                if (current_tile_number >= last_day_of_month(current_month - 1, is_leap_year(current_year)) - 1) {
+                if (current_tile_number > last_day_of_month(current_month - 1, is_leap_year(current_year)) - 1) {
                     first_tile_day = next_month_day++;
                     current_position = NEXT_MONTH;
                 }
