@@ -1,31 +1,32 @@
-#pragma once
-#include <stdlib.h>
-#include <stdbool.h>
-#include <stdint.h>
-#include <string.h>
-#include <regex.h>
-#include <stdio.h>
+#define _GNU_SOURCE
 #include <time.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
 
 #include "calendar_utils.h"
 #include "config.h"
 
-// Matches the input string with a regex string and outputs the match (only matches once)
-char *regex_parse(char *input_string, char *regex_string);
+struct event {
+	char *name;
+	char *cal_name;
+	int all_day;
+	struct tm start, end;
+	struct tm date;
+};
 
-// Return a char with all the events for any date
-FILE *get_events(char *file, uint16_t year, uint8_t month, uint8_t day);
+struct calendar {
+	struct event *events;
+	size_t nevents;
+	size_t size;
+};
 
-// Return the different properties of an event
-char *get_event_name(char *event);
-char *get_event_start_time(char *event);
-char *get_event_end_time(char *event);
-char *get_event_calendar_name(char *event);
-bool get_event_all_day(char *event);
-
-// Return the number of events for a given day
-uint16_t get_number_of_events(FILE *ccal_event_list);
-
-// Return the maximum number of events for any day in the given week number (0-52)
-uint16_t get_max_events_for_week(uint16_t year, uint8_t month, uint8_t day);
-
+int calendar_create(struct calendar *cal, char *file);
+int calendar_destroy(struct calendar *cal);
+int get_max_events_for_week(struct calendar *cal, int16_t year, int8_t month, int8_t day);
+int get_number_of_events(struct calendar *cal, struct tm date);

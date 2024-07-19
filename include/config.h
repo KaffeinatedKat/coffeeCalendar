@@ -13,7 +13,7 @@
 #define CALENDAR_REFRESH_TIME 30
 
 // Where to write ccal output files
-#define CCAL_LOCATION "~/calendars/john.ccal"
+#define CCAL_LOCATION "/home/coffee/calendars/john.ccal"
 
 // Event tag placeholders to use if they
 // are not found within the ical event

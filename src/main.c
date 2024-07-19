@@ -70,6 +70,12 @@ void render_calendar(lv_obj_t *cont) {
     int16_t modified_tile_w = TILE_W;
 
     FILE *event_list;
+    // Calendar events
+    struct calendar cal = {0};
+    struct event *event;
+
+    calendar_create(&cal, CCAL_LOCATION);
+
 
     struct hashmap *map = hashmap_new(sizeof(struct calendars), 0, 0, 0, color_hash, color_compare, NULL, NULL);
 
@@ -103,7 +109,7 @@ void render_calendar(lv_obj_t *cont) {
         tile_x = TILE_W * -1;
         tile_y += TILE_H;
 
-        max_events_this_week = get_max_events_for_week(current_year, modified_month, current_tile_number);
+        max_events_this_week = get_max_events_for_week(&cal, current_year, modified_month, current_tile_number);
 
         // Increase the size of the tiles to fit all the events
         if (max_events_this_week > 3 && r != 0) {
@@ -127,6 +133,7 @@ void render_calendar(lv_obj_t *cont) {
             tile_x += TILE_W;
 
             if (r == 0) {
+                // Top bar with days of the week
                 lv_obj_t *tile = lv_obj_create(cont);
                 lv_obj_set_size(tile, TILE_W, 40);
                 lv_obj_set_pos(tile, tile_x - 1, 0);
@@ -139,6 +146,7 @@ void render_calendar(lv_obj_t *cont) {
                 lv_obj_set_style_text_color(week_label, lv_color_hex(0xffffff), 0);
                 lv_obj_set_align(week_label, LV_ALIGN_CENTER);
             }
+
 
             lv_obj_t * tile = lv_obj_create(cont);
             lv_obj_set_size(tile, modified_tile_w, modified_tile_h);
@@ -171,6 +179,7 @@ void render_calendar(lv_obj_t *cont) {
             // Count the tiles up
             current_tile_number = first_tile_day++;
 
+        // Ensure that the tile's data stays within the bounds of the month it's counting in
             if (current_position == LAST_MONTH) {
                 // Adjust for year changes
                 if (current_month == 1) {
@@ -180,7 +189,7 @@ void render_calendar(lv_obj_t *cont) {
                     modified_month = current_month - 1;
                 }
 
-                if (current_tile_number > last_day_of_month(current_month - 1, is_leap_year(current_year)) - 1) {
+                if (current_tile_number > last_day_of_month(modified_month, is_leap_year(current_year)) - 1) {
                     first_tile_day = this_month_day++;
                     current_position = THIS_MONTH;
                 }
@@ -194,7 +203,7 @@ void render_calendar(lv_obj_t *cont) {
                     modified_month = current_month;
                 }
 
-                if (current_tile_number > last_day_of_month(current_month - 1, is_leap_year(current_year)) - 1) {
+                if (current_tile_number > last_day_of_month(current_month, is_leap_year(current_year)) - 1) {
                     first_tile_day = next_month_day++;
                     current_position = NEXT_MONTH;
                 }
@@ -209,14 +218,31 @@ void render_calendar(lv_obj_t *cont) {
                 modified_month = current_month + 2;
             }
 
-            event_list = get_events(CCAL_LOCATION, modified_year, modified_month, current_tile_number);
+            //event_list = get_events(CCAL_LOCATION, modified_year, modified_month, current_tile_number);
+
+            // TODO: make all functions use a tm_time struct
+            struct tm date = {
+                .tm_year = modified_year - 1900,
+                .tm_mon = modified_month + 1,
+                .tm_mday = current_tile_number,
+            };
 
             // Loop through each event and add it to the day box
-            while (fgets(result, sizeof(result), event_list)) {
+            for (int x = 0; x < cal.nevents; x++) {
+                event = &cal.events[x];
+
+                // Only grab events for the current date
+                if (event->date.tm_year + 1900 != modified_year) continue;
+                else if (event->date.tm_year + 1900 > modified_year) break;
+                if (event->date.tm_mon + 1 != modified_month) continue;
+                else if (event->date.tm_mon + 1 > modified_month) break;
+                if (event->date.tm_mday != current_tile_number) continue;
+                else if (event->date.tm_mday > current_tile_number) break;
+
                 struct calendars *calendars;
-                bool event_all_day = get_event_all_day(result);
-                char *event_name = get_event_name(result);
-                char *event_calendar_name = get_event_calendar_name(result);
+                bool event_all_day = event->all_day;
+                const char *event_name = event->name;
+                const char *event_calendar_name = event->cal_name;
 
                 calendars = hashmap_get(map, &(struct calendars){ .name=event_calendar_name });
                 uint32_t event_color = calendars->color; 
@@ -234,24 +260,20 @@ void render_calendar(lv_obj_t *cont) {
                 lv_obj_set_style_text_color(event_label, lv_color_hex(0xffffff), 0);
 
                 if (!event_all_day) {
-                    char *event_start_time = get_event_start_time(result);
-                    char *event_end_time = get_event_end_time(result);
+                    char event_start_time[6] = {0};
+                    char event_end_time[6] = {0};
+
+                    strftime(event_start_time, 6, "%H:%M", &event->start);
+                    strftime(event_end_time, 6, "%H:%M", &event->end);
 
                     lv_label_set_text_fmt(event_label, "%s\n%s - %s", event_name, event_start_time, event_end_time);
-
-                    free(event_start_time);
-                    free(event_end_time);
                 } else {
                     lv_label_set_text_fmt(event_label, "%s\nAll day", event_name);
                 }
 
                 lv_obj_set_pos(event_container, 0, event_pos);
                 lv_obj_set_align(event_label, LV_ALIGN_LEFT_MID);
-
-                free(event_name);
-                free(event_calendar_name);
             }
-            pclose(event_list);
 
             lv_label_set_text_fmt(day_label, "%d", current_tile_number);
             lv_label_set_text_fmt(month_label, "%s", month_name(modified_month));
@@ -259,6 +281,8 @@ void render_calendar(lv_obj_t *cont) {
     }
     lv_obj_set_style_pad_row(cont, 0, 0);
     lv_obj_set_style_pad_column(cont, 0, 0);
+
+    calendar_destroy(&cal);
 }
 
 int main(int argc, char *argv[])
@@ -272,24 +296,26 @@ int main(int argc, char *argv[])
     // Create the screen
     lv_obj_t* cont = lv_obj_create(lv_screen_active());
 
-    // Set up the hashmap for calendar colors
+    do {
+        // Render the lvgl screen
+        render_calendar(cont);
 
-    render_calendar(cont);
-
-    /*Handle LVGL tasks*/
-    while(1) {
         lv_timer_handler();
 
-        sleep(CALENDAR_REFRESH_TIME * 60);
+        //sleep(CALENDAR_REFRESH_TIME * 60);
+        sleep(1);
 
         // Sync the new online calendar data (if applicible)
         // use cron to download new ical files and convert them with bin/ical2ccal
         // FIXME: include builtin online calendar refreshing
+    
 
         // Clean up the screen and redraw it
         lv_obj_clean(cont);
-        render_calendar(cont);
-    }
+        
+    } while (1);
+
+    lv_obj_clean(cont);
 
     return 0;
 }
