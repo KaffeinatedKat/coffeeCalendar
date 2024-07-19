@@ -62,7 +62,7 @@ void render_calendar(lv_obj_t *cont) {
     bool month_bleed = false;
 
     // lvgl stuff
-    const int16_t TILE_H = (SCREEN_HEIGHT / NUMBER_OF_WEEKS) - 8;
+    const int16_t TILE_H = (SCREEN_HEIGHT / NUMBER_OF_WEEKS) - 14;
     const int16_t TILE_W = (SCREEN_WIDTH / 7);
     int16_t tile_x = TILE_W * -1;
     int16_t tile_y = TILE_H * -1;
@@ -282,6 +282,35 @@ void render_calendar(lv_obj_t *cont) {
     lv_obj_set_style_pad_row(cont, 0, 0);
     lv_obj_set_style_pad_column(cont, 0, 0);
 
+    // Sync info bar at the bottom
+    lv_obj_t * info_bar = lv_obj_create(cont);
+    lv_obj_set_size(info_bar, SCREEN_WIDTH, 30);
+    lv_obj_set_pos(info_bar, 0, SCREEN_HEIGHT - 30);
+    lv_obj_set_style_pad_all(info_bar, 20, 0);
+    lv_obj_set_style_radius(info_bar, LV_STATE_DEFAULT, 0);
+    lv_obj_set_style_border_width(info_bar, LV_STATE_DEFAULT, 1);
+    lv_obj_set_style_border_color(info_bar, lv_color_hex(0xd9d9d9), 0);
+    lv_obj_set_style_bg_color(info_bar, lv_color_hex(0x282828), 0);
+    lv_obj_set_scrollbar_mode(info_bar, LV_SCROLLBAR_MODE_OFF);
+
+    /*
+    TODO: add last sync time to info bar
+    lv_obj_t *sync_label = lv_label_create(info_bar);
+    lv_label_set_text_fmt(sync_label, "Last synced: 21:30");
+    lv_obj_set_style_text_color(sync_label, lv_color_hex(0xffffff), 0);
+    lv_obj_set_align(sync_label, LV_ALIGN_CENTER);
+    */
+
+    lv_obj_t *version_label = lv_label_create(info_bar);
+    lv_label_set_text_fmt(version_label, "coffeeCalendar Beta v1.1.0");
+    lv_obj_set_style_text_color(version_label, lv_color_hex(0xffffff), 0);
+    lv_obj_set_align(version_label, LV_ALIGN_LEFT_MID);
+
+    lv_obj_t *url_label = lv_label_create(info_bar);
+    lv_label_set_text_fmt(url_label, "https://github.com/KaffeinatedKat/coffeeCalendar");
+    lv_obj_set_style_text_color(url_label, lv_color_hex(0xffffff), 0);
+    lv_obj_set_align(url_label, LV_ALIGN_RIGHT_MID);
+
     calendar_destroy(&cal);
 }
 
@@ -302,8 +331,7 @@ int main(int argc, char *argv[])
 
         lv_timer_handler();
 
-        //sleep(CALENDAR_REFRESH_TIME * 60);
-        sleep(1);
+        sleep(CALENDAR_REFRESH_TIME * 60);
 
         // Sync the new online calendar data (if applicible)
         // use cron to download new ical files and convert them with bin/ical2ccal
