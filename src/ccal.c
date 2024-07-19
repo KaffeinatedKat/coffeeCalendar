@@ -1,11 +1,6 @@
 #include "ccal.h"
 
-struct events {
-	char *content;
-	size_t size;
-};
-
-int init_events(struct events *event_list, const char *ccal_file) {
+int read_file(struct file *event_list, const char *ccal_file) {
 	int fd;
 	char *map;
 	struct stat st;
@@ -29,10 +24,10 @@ int init_events(struct events *event_list, const char *ccal_file) {
 	return 0;
 }
 
-int parse_pair(struct events *p, const char *tag, char **out) {
+int parse_pair(struct file *event_list, const char *tag, char **out) {
 	char *p1, *p2;
 
-	p1 = strstr(p->content, tag);
+	p1 = strstr(event_list->content, tag);
 	if (p1 == NULL) {
         return -1;
     }
@@ -48,12 +43,12 @@ int parse_pair(struct events *p, const char *tag, char **out) {
 	return 0;
 }
 
-int increment_line(struct events *p) {
-	p->content = strchr(p->content, '\n');
-	if (p->content == NULL) {
+int increment_line(struct file *event_list) {
+	event_list->content = strchr(event_list->content, '\n');
+	if (event_list->content == NULL) {
         return -1;
     }
-	p->content++;
+	event_list->content++;
 
 	return 0;
 }
@@ -80,8 +75,8 @@ int date_ascending(const void *va, const void *vb) {
 int calendar_create(struct calendar *cal, char *file) {
 	char *out;
 	struct event event = {0}; // A single parsed event
-	struct events event_list; // The list of all events to be parsed
-	init_events(&event_list, file);
+	struct file event_list; // The list of all events to be parsed
+	read_file(&event_list, file);
 
 	do {
 		if (parse_pair(&event_list, "%N", &out) != -1) {

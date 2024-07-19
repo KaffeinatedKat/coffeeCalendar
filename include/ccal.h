@@ -12,6 +12,11 @@
 #include "calendar_utils.h"
 #include "config.h"
 
+struct file {
+    char *content;
+    size_t size;
+};
+
 struct event {
 	char *name;
 	char *cal_name;
