@@ -129,22 +129,23 @@ int get_number_of_events(struct calendar *cal, struct tm date) {
 	struct event *event;
 	for (int i = 0; i < cal->nevents; i++) {
 		event = &cal->events[i];
-		if (event->date.tm_year < date.tm_year) continue; \
-		else if (event->date.tm_year > date.tm_year) break;
-		if (event->date.tm_mon < date.tm_mon) continue; \
-		else if (event->date.tm_mon > date.tm_mon) break;
+		if (event->date.tm_year + 1900 < date.tm_year) continue; \
+		else if (event->date.tm_year + 1900 > date.tm_year) break;
+		if (event->date.tm_mon + 1 < date.tm_mon) continue; \
+		else if (event->date.tm_mon + 1 > date.tm_mon) break;
 		if (event->date.tm_mday < date.tm_mday) continue; \
 		else if (event->date.tm_mday > date.tm_mday) break;
 
 		events++;
 	}
+
 	return events;
 }
 
 int get_max_events_for_week(struct calendar *cal, int16_t year, int8_t month, int8_t day) {
 	int tmp, max = 0;
 	struct tm date = {
-		.tm_year = year - 1900,
+		.tm_year = year,
 		.tm_mon = month,
 		.tm_mday = day,
 	};
