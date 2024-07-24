@@ -1,4 +1,5 @@
-#pragma once
+#ifndef CAL_UTILS
+#define CAL_UTILS
 #include <stdint.h>
 #include <string.h>
 #include <time.h>
@@ -14,3 +15,4 @@ bool is_leap_year(uint16_t year);
 
 const char *month_name(uint8_t month);
 const char *week_name(uint8_t week_day);
+#endif

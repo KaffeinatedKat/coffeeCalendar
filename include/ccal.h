@@ -1,3 +1,5 @@
+#ifndef CCAL
+#define CCAL
 #define _GNU_SOURCE
 #include <time.h>
 #include <stdio.h>
@@ -35,3 +37,4 @@ int calendar_create(struct calendar *cal, char *file);
 int calendar_destroy(struct calendar *cal);
 int get_max_events_for_week(struct calendar *cal, int16_t year, int8_t month, int8_t day);
 int get_number_of_events(struct calendar *cal, struct tm date);
+#endif
