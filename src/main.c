@@ -1,5 +1,4 @@
 #include "../lvgl/lvgl.h"
-#include "../lvgl/demos/lv_demos.h"
 #include <unistd.h>
 #include <pthread.h>
 #include <time.h>
@@ -40,7 +39,7 @@ uint64_t color_hash(const void *item, uint64_t seed0, uint64_t seed1) {
 }
 // <---------->
 
-void render_calendar(lv_obj_t *cont) {
+void render_calendar(lv_obj_t *cont, struct config_options *config) {
     // time 
     time_t t = time(NULL);
     struct tm tm = *localtime(&t);
@@ -62,8 +61,8 @@ void render_calendar(lv_obj_t *cont) {
     bool month_bleed = false;
 
     // lvgl stuff
-    const int16_t TILE_H = (SCREEN_HEIGHT / NUMBER_OF_WEEKS) - 14;
-    const int16_t TILE_W = (SCREEN_WIDTH / 7);
+    const int16_t TILE_H = (config->screen_height / 5) - 14;
+    const int16_t TILE_W = (config->screen_width / 7);
     int16_t tile_x = TILE_W * -1;
     int16_t tile_y = TILE_H * -1;
     int16_t modified_tile_h = TILE_H;
@@ -73,6 +72,7 @@ void render_calendar(lv_obj_t *cont) {
     // Calendar events
     struct calendar cal = {0};
     struct event *event;
+    char *endptr;
 
     calendar_create(&cal, CCAL_LOCATION);
 
@@ -81,12 +81,12 @@ void render_calendar(lv_obj_t *cont) {
 
     // Calendar names & colors
     // (program will segfault if your calendar name is not placed in the hashmap)
-    hashmap_set(map, &(struct calendars){ .name = "mom.ics", .color = 0x023E8A });
+    hashmap_set(map, &(struct calendars){ .name = "mom.ics", .color = strtol("0x023E8A", &endptr, 16) });
     hashmap_set(map, &(struct calendars){ .name = "john_work.ics", .color = 0x276221 });
     hashmap_set(map, &(struct calendars){ .name = "keith_work.ics", .color = 0x276221 });
     hashmap_set(map, &(struct calendars){ .name = "family.ics", .color = 0xff781f });
 
-    lv_obj_set_size(cont, SCREEN_WIDTH, SCREEN_HEIGHT);
+    lv_obj_set_size(cont, config->screen_width, config->screen_height);
     lv_obj_set_style_pad_all(cont, LV_STATE_DEFAULT, 0);
     lv_obj_set_style_radius(cont, LV_STATE_DEFAULT, 0);
     lv_obj_center(cont);
@@ -104,7 +104,7 @@ void render_calendar(lv_obj_t *cont) {
     }
 
     // Actually rendering the calendar
-    for (int r = 0; r < NUMBER_OF_WEEKS; r++) {
+    for (int r = 0; r < 5; r++) {
         int16_t max_events_this_week = 0;
         tile_x = TILE_W * -1;
         tile_y += TILE_H;
@@ -173,7 +173,7 @@ void render_calendar(lv_obj_t *cont) {
                 // Make the day and month labels visible with the different background color
                 lv_obj_set_style_text_color(day_label, lv_color_hex(0xffffff), 0);
                 lv_obj_set_style_text_color(month_label, lv_color_hex(0xffffff), 0);
-                lv_obj_set_style_bg_color(tile, lv_color_hex(CURRENT_DAY_BG_COLOR), 0);
+                lv_obj_set_style_bg_color(tile, lv_color_hex(config->current_day_bgcolor), 0);
             }
 
             // Count the tiles up
@@ -284,8 +284,8 @@ void render_calendar(lv_obj_t *cont) {
 
     // Sync info bar at the bottom
     lv_obj_t * info_bar = lv_obj_create(cont);
-    lv_obj_set_size(info_bar, SCREEN_WIDTH, 30);
-    lv_obj_set_pos(info_bar, 0, SCREEN_HEIGHT - 30);
+    lv_obj_set_size(info_bar, config->screen_width, 30);
+    lv_obj_set_pos(info_bar, 0, config->screen_height - 30);
     lv_obj_set_style_pad_all(info_bar, 20, 0);
     lv_obj_set_style_radius(info_bar, LV_STATE_DEFAULT, 0);
     lv_obj_set_style_border_width(info_bar, LV_STATE_DEFAULT, 1);
@@ -316,6 +316,15 @@ void render_calendar(lv_obj_t *cont) {
 
 int main(int argc, char *argv[])
 {
+    const char *home = getenv("HOME");
+    char config_path[2048];
+    strcpy(config_path, home);
+    strcat(config_path, "/.config/coffeeCalendar/config");
+    
+    // Parse the config file
+    struct config_options config = {0};
+    config_create(&config, config_path);
+
     lv_init();
 
     /*Linux frame buffer device init*/
@@ -327,11 +336,11 @@ int main(int argc, char *argv[])
 
     do {
         // Render the lvgl screen
-        render_calendar(cont);
+        render_calendar(cont, &config);
 
         lv_timer_handler();
 
-        sleep(CALENDAR_REFRESH_TIME * 60);
+        sleep(config.refresh_time * 60);
 
         // Sync the new online calendar data (if applicible)
         // use cron to download new ical files and convert them with bin/ical2ccal

@@ -1,18 +1,12 @@
-#pragma once
+#ifndef CONFIG_H
+#define CONFIG_H
+#include <stdbool.h>
+#include <errno.h>
 
-// ----- ical2ccal settings -----
+#include "ccal.h"
 
-// Set to 1 to enable online calendar syncing
-#define SYNC_CALENDARS 1
-
-//
-// To set calendar colors, see line [x] in src/main.c
-//
-
-// Time to refresh the calendar in minutes (effects both on and offline)
-#define CALENDAR_REFRESH_TIME 30
-
-// Where to write ccal output files
+// Where to read events from
+// TODO: download and convert ical files with libcurl
 #define CCAL_LOCATION "/home/coffee/calendars/john.ccal"
 
 // Event tag placeholders to use if they
@@ -22,13 +16,14 @@
 #define PLACEHOLDER_EVENT_START_TIME "00:00"
 #define PLACEHOLDER_EVENT_END_TIME "00:00"
 
-// ----- coffeeCalendar settings -----
+struct config_options {
+    int screen_height;
+    int screen_width;
+    int refresh_time;
+    long int current_day_bgcolor;
+    char **online_calendars;
+    char **calendar_colors;
+};
 
-// The number of weeks to display (including current)
-#define NUMBER_OF_WEEKS 5
-
-#define TILE_BG_COLOR
-#define CURRENT_DAY_BG_COLOR 0xADD8E6
-
-#define SCREEN_HEIGHT 1080
-#define SCREEN_WIDTH 1920
+int config_create(struct config_options *config, char *config_location);
+#endif

@@ -12,11 +12,11 @@ add_subdirectory(lvgl)
 target_include_directories(lvgl PUBLIC ${PROJECT_SOURCE_DIR})
 
 # coffeeCalendar
-add_executable(main src/main.c src/mouse_cursor_icon.c src/ccal.c src/calendar_utils.c src/hashmap.c)
+add_executable(coffeeCalendar src/main.c src/mouse_cursor_icon.c src/ccal.c src/calendar_utils.c src/hashmap.c src/config.c)
 
-target_include_directories(main PRIVATE include)
-target_link_libraries(main lvgl lvgl::examples lvgl::demos lvgl::thorvg ${SDL2_LIBRARIES} m pthread)
-add_custom_target (run COMMAND ${EXECUTABLE_OUTPUT_PATH}/main DEPENDS main)
+target_include_directories(coffeeCalendar PRIVATE include)
+target_link_libraries(coffeeCalendar lvgl lvgl::thorvg ${SDL2_LIBRARIES} m pthread)
+add_custom_target (run COMMAND ${EXECUTABLE_OUTPUT_PATH}/coffeeCalendar DEPENDS coffeeCalednar)
 
 # ical2ccal
 add_executable(ical2ccal src/ical2ccal.c)
