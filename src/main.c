@@ -39,7 +39,7 @@ void render_calendar(lv_obj_t *cont, struct config_options *config) {
     int8_t current_month = date.tm_mon + 1;
     int8_t current_day = date.tm_mday;
     int8_t current_tile_number;
-    int8_t start_day = day_of_week(current_year, current_month, current_day);
+    int8_t start_day = first_day_of_week(current_year, current_month, current_day);
 
     // lvgl stuff
     const int16_t TILE_H = (config->screen_height / 5) - 14;

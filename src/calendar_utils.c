@@ -1,6 +1,6 @@
 #include "calendar_utils.h"
 
-uint8_t day_of_week(uint16_t year, uint8_t month, uint8_t day) {
+uint8_t first_day_of_week(uint16_t year, uint8_t month, uint8_t day) {
     // Zeller's Congruence algorithm
     if (month < 3) {
         month += 12;
