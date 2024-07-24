@@ -38,12 +38,8 @@ void render_calendar(lv_obj_t *cont, struct config_options *config) {
     int16_t current_year = date.tm_year + 1900;
     int8_t current_month = date.tm_mon + 1;
     int8_t current_day = date.tm_mday;
+    int8_t current_tile_number;
     int8_t start_day = day_of_week(current_year, current_month, current_day);
-    int8_t end_day = last_day_of_month(current_month, is_leap_year(current_year));
-
-    // calendar tiles
-    int8_t current_tile_number = get_week_number(current_year, current_month, current_day);
-    int8_t week_start_tile_number;
 
     // lvgl stuff
     const int16_t TILE_H = (config->screen_height / 5) - 14;
@@ -80,16 +76,9 @@ void render_calendar(lv_obj_t *cont, struct config_options *config) {
     lv_obj_center(cont);
     lv_obj_set_scrollbar_mode(cont, LV_SCROLLBAR_MODE_OFF);
 
-    // If the days in the current week go into last month, calculate
-    // what the last day of that month was and count backwards from there
-    if (current_day - start_day <= 0) {
-        date.tm_mday = last_day_of_month(current_month - 1, is_leap_year(current_year)) + (current_day - start_day) - 1;
-    // Otherwise we can just count back x number of times
-    } else {
-        date.tm_mday = current_day - start_day - 1;
-    }
+    // Get the first tile's date
+    date.tm_mday = current_day - start_day - 1;
     mktime(&date);
-
 
     // Actually rendering the calendar
     for (int r = 0; r < 5; r++) {
