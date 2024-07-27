@@ -113,14 +113,7 @@ int ccal_calendar_create(struct ccal_calendar *cal, char *file) {
 }
 
 int ccal_calendar_destroy(struct ccal_calendar *cal) {
-	struct ccal_event *event;
-	for (int x = 0; x < cal->nevents; x++) {
-		event = &cal->events[x];
-		free(event->cal_name);
-		free(event->name);
-	}
 	free(cal->events);
-
 	return 0;
 }
 

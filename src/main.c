@@ -224,6 +224,7 @@ void render_calendar(struct ccal_calendar cal, lv_obj_t *cont, struct config_opt
 
 int main(int argc, char *argv[])
 {
+    static const struct ccal_calendar empty_cal = {0};
     struct ccal_calendar cal = {0};
     struct info_bar_data data = {0};
     const char *home = getenv("HOME");
@@ -271,6 +272,10 @@ int main(int argc, char *argv[])
         // Loop every minute for info bar, refresh calendars every x == config.refresh_time
         x++;
         if (x >= config.refresh_time) {
+            // Clear old events
+            ccal_calendar_destroy(&cal);
+            cal = empty_cal;
+
             // Online calendar downloading
             // Download online calendars with curl
             for (int x = 0; x < config.calendar_count; x++) {
