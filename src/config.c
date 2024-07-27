@@ -250,9 +250,9 @@ int config_create(struct config_options *config, char *config_location) {
     get_config_value(&config_list, "current_day_bgcolor", STRING, &values);
     config->current_day_bgcolor = strtol(values.val.str, &endptr, 16);
 
-    /* TODO: download and convert ical files with libcurl
     get_config_value(&config_list, "online_calendars", LIST, &values);
     config->online_calendars = values.val.array;
+    config->calendar_count = values.array_size;
     calendar_size = values.array_size;
 
     get_config_value(&config_list, "online_calendar_colors", LIST, &values);
@@ -264,7 +264,6 @@ int config_create(struct config_options *config, char *config_location) {
         print_config_error(&values);
         exit(-1);
     }
-    */
 
     return 0;
 }

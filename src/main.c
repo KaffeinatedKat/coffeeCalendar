@@ -9,29 +9,10 @@
 
 #include "config.h"
 #include "calendar_utils.h"
+#include "ical2ccal.h"
 #include "ccal.h"
-#include "hashmap.h"
 
-
-struct calendars {
-    char *name;
-    uint32_t color;
-};
-
-// <----- Hashmap.c stuff ----->
-int color_compare(const void *a, const void *b, void *udata) {
-    const struct calendars *ua = a;
-    const struct calendars *ub = b;
-    return strcmp(ua->name, ub->name);
-}
-
-uint64_t color_hash(const void *item, uint64_t seed0, uint64_t seed1) {
-    const struct calendars *calendars = item;
-    return hashmap_sip(calendars->name, strlen(calendars->name), seed0, seed1);
-}
-// <---------->
-
-void render_calendar(lv_obj_t *cont, struct config_options *config) {
+void render_calendar(struct ccal_calendar cal, lv_obj_t *cont, struct config_options *config) {
     // time 
     time_t t = time(NULL);
     struct tm date = *localtime(&t);
@@ -49,25 +30,11 @@ void render_calendar(lv_obj_t *cont, struct config_options *config) {
     int16_t modified_tile_h = TILE_H;
     int16_t modified_tile_w = TILE_W;
 
-    // Calendar events
-    FILE *event_list;
-    struct calendar cal = {0};
-    struct event *event;
-
-    // Misc
     char *endptr;
 
-
-    calendar_create(&cal, CCAL_LOCATION);
-
-    struct hashmap *map = hashmap_new(sizeof(struct calendars), 0, 0, 0, color_hash, color_compare, NULL, NULL);
-
-    // Calendar names & colors
-    // (program will segfault if your calendar name is not placed in the hashmap)
-    hashmap_set(map, &(struct calendars){ .name = "mom.ics", .color = strtol("0x023E8A", &endptr, 16) });
-    hashmap_set(map, &(struct calendars){ .name = "john_work.ics", .color = 0x276221 });
-    hashmap_set(map, &(struct calendars){ .name = "keith_work.ics", .color = 0x276221 });
-    hashmap_set(map, &(struct calendars){ .name = "family.ics", .color = 0xff781f });
+    // Calendar events
+    FILE *event_list;
+    struct ccal_event *event;
 
     // Configure the screen
     lv_obj_set_size(cont, config->screen_width, config->screen_height);
@@ -86,7 +53,7 @@ void render_calendar(lv_obj_t *cont, struct config_options *config) {
         tile_x = TILE_W * -1;
         tile_y += TILE_H;
 
-        max_events_this_week = get_max_events_for_week(&cal, current_year, current_month, current_tile_number);
+        max_events_this_week = ccal_get_max_events_for_week(&cal, current_year, current_month, current_tile_number);
 
         // Increase the size of the tiles to fit all the events
         if (max_events_this_week > 3 && r != 0) {
@@ -166,19 +133,14 @@ void render_calendar(lv_obj_t *cont, struct config_options *config) {
 
                 // Only grab events for the current date
                 if (event->date.tm_year + 1900 != current_year) continue;
-                else if (event->date.tm_year + 1900 > current_year) break;
                 if (event->date.tm_mon + 1 != current_month) continue;
-                else if (event->date.tm_mon + 1 > current_month) break;
                 if (event->date.tm_mday != current_tile_number) continue;
-                else if (event->date.tm_mday > current_tile_number) break;
 
-                struct calendars *calendars;
                 bool event_all_day = event->all_day;
                 const char *event_name = event->name;
                 const char *event_calendar_name = event->cal_name;
 
-                calendars = hashmap_get(map, &(struct calendars){ .name=event_calendar_name });
-                uint32_t event_color = calendars->color; 
+                uint32_t event_color = strtol(config->calendar_colors[event->color_index], &endptr, 16);
 
                 // Event label
                 lv_obj_t *event_container = lv_obj_create(tile);
@@ -243,20 +205,30 @@ void render_calendar(lv_obj_t *cont, struct config_options *config) {
     lv_label_set_text_fmt(url_label, "https://github.com/KaffeinatedKat/coffeeCalendar");
     lv_obj_set_style_text_color(url_label, lv_color_hex(0xffffff), 0);
     lv_obj_set_align(url_label, LV_ALIGN_RIGHT_MID);
-
-    calendar_destroy(&cal);
 }
 
 int main(int argc, char *argv[])
 {
+    struct ccal_calendar cal = {0};
+
     const char *home = getenv("HOME");
-    char config_path[2048];
-    strcpy(config_path, home);
-    strcat(config_path, "/.config/coffeeCalendar/config");
-    
-    // Parse the config file
+    char ical_file_path[4096];
+    char ical_name[9];
+
+    // Load file storage path into config
     struct config_options config = {0};
-    config_create(&config, config_path);
+    struct stat st = {0};
+    strcpy(config.config_path, home);
+    strcat(config.config_path, "/.config/coffeeCalendar/config");
+    strcpy(config.filecache_path, home);
+    strcat(config.filecache_path, "/.local/share/coffeeCalendar/");
+    // Create the ical storage directory if it doesn't already exist
+    if (stat(config.filecache_path, &st) == -1) {
+        mkdir(config.filecache_path, 0700);
+    }
+
+    // Parse the config file
+    config_create(&config, config.config_path);
 
     lv_init();
 
@@ -268,17 +240,32 @@ int main(int argc, char *argv[])
     lv_obj_t* cont = lv_obj_create(lv_screen_active());
 
     do {
+        // Online calendar downloading
+        // Download online calendars with curl
+        for (int x = 0; x < config.calendar_count; x++) {
+            ical_name[0] = '\0';
+            snprintf(ical_name, 9, "%03d.ical", x);
+            ical_file_path[0] = '\0';
+            strcpy(ical_file_path, config.filecache_path);
+            strcat(ical_file_path, ical_name);
+
+            ical_download(config.online_calendars[x], ical_file_path);
+            struct file ical_data;
+            read_file(&ical_data, ical_file_path);
+            icalcomponent *ical_root = icalparser_parse_string(ical_data.content);
+            // TODO: better errors
+            if (ical_root == NULL) { printf("Failed to parse ical data\n"); }
+
+            ical2ccal_load_events(&cal, ical_root, ical_name);
+        }
+
         // Render the lvgl screen
-        render_calendar(cont, &config);
+        render_calendar(cal, cont, &config);
 
         lv_timer_handler();
 
         sleep(config.refresh_time * 60);
 
-        // Sync the new online calendar data (if applicible)
-        // use cron to download new ical files and convert them with bin/ical2ccal
-        // FIXME: include builtin online calendar refreshing
-    
 
         // Clean up the screen and redraw it
         lv_obj_clean(cont);

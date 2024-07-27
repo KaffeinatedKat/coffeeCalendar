@@ -19,22 +19,23 @@ struct file {
     size_t size;
 };
 
-struct event {
+struct ccal_event {
 	char *name;
 	char *cal_name;
 	int all_day;
+    int color_index;
 	struct tm start, end;
 	struct tm date;
 };
 
-struct calendar {
-	struct event *events;
+struct ccal_calendar {
+	struct ccal_event *events;
 	size_t nevents;
 	size_t size;
 };
 
-int calendar_create(struct calendar *cal, char *file);
-int calendar_destroy(struct calendar *cal);
-int get_max_events_for_week(struct calendar *cal, int16_t year, int8_t month, int8_t day);
-int get_number_of_events(struct calendar *cal, struct tm date);
+int ccal_calendar_create(struct ccal_calendar *cal, char *file);
+int ccal_calendar_destroy(struct ccal_calendar *cal);
+int ccal_get_max_events_for_week(struct ccal_calendar *cal, int16_t year, int8_t month, int8_t day);
+int ccal_get_number_of_events(struct ccal_calendar *cal, struct tm date);
 #endif

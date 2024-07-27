@@ -1,0 +1,22 @@
+// coffeeCalendar config
+
+// Please note that any line not containing the name of a config option will
+// be ignored by the parser, and can be used for comments. Any missing 
+// options we be announed upon the launch of coffeeCalendar
+
+// Time in minutes between resyncing calendars
+cal_refresh_time = 30
+
+// List of urls to download ical files from
+online_calendars = ["https://example.com/basic.ics", "https://test.xyz/some_data/test.ics"]
+
+// The hex color used to display the events from each calendar in the same
+// order
+online_calendar_colors = ["0x023E8A", "0x276221"]
+
+// The bgcolor of the current day's tile
+current_day_bgcolor = "0xADD8E6"
+
+// Screen resolution
+screen_width = 1920
+screen_height = 1080

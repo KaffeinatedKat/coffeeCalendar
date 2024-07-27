@@ -38,40 +38,18 @@
 
 #include "config.h"
 
-char *read_file(const char *filename) {
-    FILE *file = fopen(filename, "r");
-    if (file == NULL) {
-        perror("Error opening file");
-        exit(EXIT_FAILURE);
-    }
+void process_event(struct ccal_calendar *cal, icalcomponent *event, char *calendar_name) {
+    // The ccal event to load the ical data into
+    struct ccal_event ccal_event;
 
-    fseek(file, 0, SEEK_END);
-    long file_size = ftell(file);
-    rewind(file);
-
-    char *buffer = (char *)malloc(file_size + 1);
-    if (buffer == NULL) {
-        perror("Error allocating memory");
-        exit(EXIT_FAILURE);
-    }
-
-    fread(buffer, 1, file_size, file);
-    fclose(file);
-
-    buffer[file_size] = '\0';
-    return buffer;
-}
-
-
-void process_event(icalcomponent *event, const char *calendar_name) {
     // Get the SUMMARY property, which represents the event name
     icalproperty *summary_property = icalcomponent_get_first_property(event, ICAL_SUMMARY_PROPERTY);
 
     if (summary_property) {
         const char *event_name = icalproperty_get_summary(summary_property);
-        printf("%%N%s%%N ", event_name);
+        ccal_event.name = event_name;
     } else {
-        printf("%%%s%%N ", PLACEHOLDER_EVENT_NAME);  // Placeholder if event has no name
+        return;
     }
 
     // Get the DTSTART property, which represents the start date and time
@@ -82,29 +60,24 @@ void process_event(icalcomponent *event, const char *calendar_name) {
         icaltimezone *local_zone = icaltimezone_get_builtin_timezone("localtime");
         time_t epoch_time = icaltime_as_timet_with_zone(start_time, local_zone);
 
-        struct tm *time_info = localtime(&epoch_time);
-
+        struct tm *time_info = gmtime(&epoch_time);
         // Change event timezone if it's not in the current zone
         if (start_time.zone && strcmp(icaltimezone_get_tzid(start_time.zone), "UTC") == 0) {
-            start_time.year = time_info->tm_year + 1900;
-            start_time.month = time_info->tm_mon + 1;
-            start_time.day = time_info->tm_mday;
-            start_time.hour = time_info->tm_hour;
-            start_time.minute = time_info->tm_min;
+            time_info = localtime(&epoch_time);
         }
+
+        // Event date
+        ccal_event.date = *time_info;
 
         // Check if it's an all-day event
         if (icaltime_is_date(start_time) != 0) {
-            printf("%%ADYes%%AD ");
-            printf("%%D%04d/%02d/%02d%%D ", start_time.year, start_time.month, start_time.day);
+            ccal_event.all_day = 1;
         } else {
-            printf("%%ADNo%%AD ");
-            printf("%%D%04d/%02d/%02d%%D ", start_time.year, start_time.month, start_time.day);
-            printf("%%B%02d:%02d%%B ", start_time.hour, start_time.minute);
+            ccal_event.all_day = 0;
+            ccal_event.start = *time_info;
         }
     } else {
-        printf("%%ADNo%%AD ");  // Placeholder for missing start date
-        printf("%%D0000/00/00%%D ");
+        return;
     }
 
     // Get the DTEND property, which represents the end date and time
@@ -115,23 +88,26 @@ void process_event(icalcomponent *event, const char *calendar_name) {
         icaltimezone *local_zone = icaltimezone_get_builtin_timezone("localtime");
         time_t epoch_time = icaltime_as_timet_with_zone(end_time, local_zone);
 
-        struct tm *time_info = localtime(&epoch_time);
-
+        struct tm *time_info = gmtime(&epoch_time);
         // Change event timezone if it's not in the current zone
         if (end_time.zone && strcmp(icaltimezone_get_tzid(end_time.zone), "UTC") == 0) {
-            end_time.hour = time_info->tm_hour;
-            end_time.minute = time_info->tm_min;
+            time_info = localtime(&epoch_time);
         }
 
         // Check if it's an all-day event
         if (icaltime_is_date(end_time) == 0) {
-            printf("%%E%02d:%02d%%E ", end_time.hour, end_time.minute);
+            ccal_event.end = *time_info;
         }
     } else {
-        printf("%%E0000/00/00%%E ");  // Placeholder for missing end date
+        return;
     }
 
-    printf("%%C%s%%C\n", calendar_name);  // Replace 'file_name' with your actual file name
+    ccal_event.cal_name = calendar_name;
+
+    char *endptr;
+    ccal_event.color_index = strtol(calendar_name, &endptr, 10);
+
+    ccal_add_event(cal, ccal_event);
 }
 
 bool is_exclude_date(icalcomponent *event, icaltimetype date) {
@@ -150,7 +126,7 @@ bool is_exclude_date(icalcomponent *event, icaltimetype date) {
     return false;
 }
 
-void add_recurring_events(icalcomponent *ical_root, icalcomponent *event, const char *calendar_name) {
+void add_recurring_events(struct ccal_calendar *cal, icalcomponent *ical_root, icalcomponent *event, const char *calendar_name) {
     int max_number_of_events = 1825;
     bool already_exists = false;
 
@@ -247,14 +223,14 @@ void add_recurring_events(icalcomponent *ical_root, icalcomponent *event, const 
 
         // Add the event to the list if it's not an excluded date
         if (array[i] != 0 && !is_exclude_date(event, expanded_event_time) && !already_exists) {
-            process_event(expanded_event, calendar_name);
+            process_event(cal, expanded_event, calendar_name);
         }
 
         icalcomponent_free(expanded_event);
     }
 }
 
-void process_events(icalcomponent *ical_root, const char *calendar_name) {
+void ical2ccal_load_events(struct ccal_calendar *cal, icalcomponent *ical_root, const char *calendar_name) {
     // Iterate through each VEVENT component in the iCalendar data
     for (icalcomponent *event = icalcomponent_get_first_component(ical_root, ICAL_VEVENT_COMPONENT);
          event != NULL;
@@ -266,14 +242,18 @@ void process_events(icalcomponent *ical_root, const char *calendar_name) {
 
         // Recurring event
         if (rrule_property) {
-            add_recurring_events(icalparser_parse_string(read_file(calendar_name)), event, calendar_name);
+            struct file ical_root;
+            read_file(&ical_root, calendar_name);
+
+            add_recurring_events(cal, icalparser_parse_string(ical_root.content), event, calendar_name);
         } else {
-            process_event(event, calendar_name);
+            process_event(cal, event, calendar_name);
         }
     }
 }
 
 
+/*
 int main(int  argc, char *argv[]) {
     if (argc != 2) {
         fprintf(stderr, "Usage: %s <ical input file>\n", argv[0]);
@@ -297,5 +277,5 @@ int main(int  argc, char *argv[]) {
 
     return 0;
 }
-
+*/
 

@@ -54,27 +54,27 @@ int increment_line(struct file *event_list) {
 }
 
 
-int add_event(struct calendar *cal, struct event event) {
+int ccal_add_event(struct ccal_calendar *cal, struct ccal_event event) {
 	if (cal->nevents == cal->size) {
 		if (cal->size == 0) cal->size = 4;
 		else cal->size *= 2;
-		cal->events = reallocarray(cal->events, cal->size, sizeof(struct event));
+		cal->events = reallocarray(cal->events, cal->size, sizeof(struct ccal_event));
 		if (cal->events == NULL) return -1;
 	}
-	memcpy(cal->events+cal->nevents, &event, sizeof(struct event));
+	memcpy(cal->events+cal->nevents, &event, sizeof(struct ccal_event));
 	cal->nevents++;
 	return 0;
 }
 
 int date_ascending(const void *va, const void *vb) {
-	struct event *a = va, *b = vb;
+	struct ccal_event *a = va, *b = vb;
 	time_t atime = mktime(&a->date), btime = mktime(&b->date);
 	return atime < btime ? -1 : atime > btime;
 }
 
-int calendar_create(struct calendar *cal, char *file) {
+int ccal_calendar_create(struct ccal_calendar *cal, char *file) {
 	char *out;
-	struct event event = {0}; // A single parsed event
+	struct ccal_event event = {0}; // A single parsed event
 	struct file event_list; // The list of all events to be parsed
 	read_file(&event_list, file);
 
@@ -102,18 +102,18 @@ int calendar_create(struct calendar *cal, char *file) {
 		if (parse_pair(&event_list, "%C", &out) != -1) {
 			event.cal_name = out;
 		}
-		add_event(cal, event);
-		memset(&event, 0, sizeof(struct event));
+		ccal_add_event(cal, event);
+		memset(&event, 0, sizeof(struct ccal_event));
 	} while (increment_line(&event_list) != -1);
 
-	qsort(cal->events, cal->nevents, sizeof(struct event), date_ascending);
+	qsort(cal->events, cal->nevents, sizeof(struct ccal_event), date_ascending);
 	free(event_list.content);
 
 	return 0;
 }
 
-int calendar_destroy(struct calendar *cal) {
-	struct event *event;
+int ccal_calendar_destroy(struct ccal_calendar *cal) {
+	struct ccal_event *event;
 	for (int x = 0; x < cal->nevents; x++) {
 		event = &cal->events[x];
 		free(event->cal_name);
@@ -124,9 +124,9 @@ int calendar_destroy(struct calendar *cal) {
 	return 0;
 }
 
-int get_number_of_events(struct calendar *cal, struct tm date) {
+int ccal_get_number_of_events(struct ccal_calendar *cal, struct tm date) {
 	int events = 0;
-	struct event *event;
+	struct ccal_event *event;
 	for (int i = 0; i < cal->nevents; i++) {
 		event = &cal->events[i];
 		if (event->date.tm_year + 1900 < date.tm_year) continue; \
@@ -142,7 +142,7 @@ int get_number_of_events(struct calendar *cal, struct tm date) {
 	return events;
 }
 
-int get_max_events_for_week(struct calendar *cal, int16_t year, int8_t month, int8_t day) {
+int ccal_get_max_events_for_week(struct ccal_calendar *cal, int16_t year, int8_t month, int8_t day) {
 	int tmp, max = 0;
 	struct tm date = {
 		.tm_year = year,
@@ -154,7 +154,7 @@ int get_max_events_for_week(struct calendar *cal, int16_t year, int8_t month, in
 
 	for (int i = 0; i < 7; i++) {
 		localtime_r(&t, &date);
-		tmp = get_number_of_events(cal, date);
+		tmp = ccal_get_number_of_events(cal, date);
 		max = tmp > max ? tmp : max;
 		t += (60 * 60 * 24);
 	}
