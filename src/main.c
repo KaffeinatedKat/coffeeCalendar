@@ -12,6 +12,49 @@
 #include "ical2ccal.h"
 #include "ccal.h"
 
+struct info_bar_data {
+    time_t last_synced;
+    time_t current_time;
+};
+
+void render_info_bar(struct info_bar_data *data, lv_obj_t *cont, struct config_options *config) {
+    struct tm *time;
+    char sync_text[24] = {0};
+    int sync_time = 0;
+
+    lv_obj_t * info_bar = lv_obj_create(cont);
+    lv_obj_set_size(info_bar, config->screen_width, 30);
+    lv_obj_set_pos(info_bar, 0, config->screen_height - 30);
+    lv_obj_set_style_pad_all(info_bar, 20, 0);
+    lv_obj_set_style_radius(info_bar, LV_STATE_DEFAULT, 0);
+    lv_obj_set_style_border_width(info_bar, LV_STATE_DEFAULT, 1);
+    lv_obj_set_style_border_color(info_bar, lv_color_hex(0xd9d9d9), 0);
+    lv_obj_set_style_bg_color(info_bar, lv_color_hex(0x282828), 0);
+    lv_obj_set_scrollbar_mode(info_bar, LV_SCROLLBAR_MODE_OFF);
+
+    sync_time = difftime(data->current_time, data->last_synced) / 60;
+    if (sync_time == 0) {
+        snprintf(sync_text, 22, "Last synced just now");
+    } else {
+        snprintf(sync_text, 20, "Last synced %dm ago", sync_time);
+    }
+    lv_obj_t *sync_label = lv_label_create(info_bar);
+    lv_label_set_text_fmt(sync_label, sync_text);
+    lv_obj_set_style_text_color(sync_label, lv_color_hex(0xffffff), 0);
+    lv_obj_set_align(sync_label, LV_ALIGN_CENTER);
+
+    lv_obj_t *version_label = lv_label_create(info_bar);
+    lv_label_set_text_fmt(version_label, "coffeeCalendar Beta v1.2.0");
+    lv_obj_set_style_text_color(version_label, lv_color_hex(0xffffff), 0);
+    lv_obj_set_align(version_label, LV_ALIGN_LEFT_MID);
+
+    time = localtime(&data->current_time);
+    lv_obj_t *time_label = lv_label_create(info_bar);
+    lv_label_set_text_fmt(time_label, "[ %02d:%02d ]", time->tm_hour, time->tm_min);
+    lv_obj_set_style_text_color(time_label, lv_color_hex(0xffffff), 0);
+    lv_obj_set_align(time_label, LV_ALIGN_RIGHT_MID);
+}
+
 void render_calendar(struct ccal_calendar cal, lv_obj_t *cont, struct config_options *config) {
     // time 
     time_t t = time(NULL);
@@ -177,43 +220,18 @@ void render_calendar(struct ccal_calendar cal, lv_obj_t *cont, struct config_opt
     lv_obj_set_style_pad_row(cont, 0, 0);
     lv_obj_set_style_pad_column(cont, 0, 0);
 
-    // Sync info bar at the bottom
-    lv_obj_t * info_bar = lv_obj_create(cont);
-    lv_obj_set_size(info_bar, config->screen_width, 30);
-    lv_obj_set_pos(info_bar, 0, config->screen_height - 30);
-    lv_obj_set_style_pad_all(info_bar, 20, 0);
-    lv_obj_set_style_radius(info_bar, LV_STATE_DEFAULT, 0);
-    lv_obj_set_style_border_width(info_bar, LV_STATE_DEFAULT, 1);
-    lv_obj_set_style_border_color(info_bar, lv_color_hex(0xd9d9d9), 0);
-    lv_obj_set_style_bg_color(info_bar, lv_color_hex(0x282828), 0);
-    lv_obj_set_scrollbar_mode(info_bar, LV_SCROLLBAR_MODE_OFF);
-
-    /*
-    TODO: add last sync time to info bar
-    lv_obj_t *sync_label = lv_label_create(info_bar);
-    lv_label_set_text_fmt(sync_label, "Last synced: 21:30");
-    lv_obj_set_style_text_color(sync_label, lv_color_hex(0xffffff), 0);
-    lv_obj_set_align(sync_label, LV_ALIGN_CENTER);
-    */
-
-    lv_obj_t *version_label = lv_label_create(info_bar);
-    lv_label_set_text_fmt(version_label, "coffeeCalendar Beta v1.1.0");
-    lv_obj_set_style_text_color(version_label, lv_color_hex(0xffffff), 0);
-    lv_obj_set_align(version_label, LV_ALIGN_LEFT_MID);
-
-    lv_obj_t *url_label = lv_label_create(info_bar);
-    lv_label_set_text_fmt(url_label, "https://github.com/KaffeinatedKat/coffeeCalendar");
-    lv_obj_set_style_text_color(url_label, lv_color_hex(0xffffff), 0);
-    lv_obj_set_align(url_label, LV_ALIGN_RIGHT_MID);
 }
 
 int main(int argc, char *argv[])
 {
     struct ccal_calendar cal = {0};
-
+    struct info_bar_data data = {0};
     const char *home = getenv("HOME");
     char ical_file_path[4096];
     char ical_name[9];
+    int x = 0;
+    int err = 0;
+    time_t rawtime;
 
     // Load file storage path into config
     struct config_options config = {0};
@@ -224,13 +242,23 @@ int main(int argc, char *argv[])
     strcat(config.filecache_path, "/.local/share/coffeeCalendar/");
     // Create the ical storage directory if it doesn't already exist
     if (stat(config.filecache_path, &st) == -1) {
-        mkdir(config.filecache_path, 0700);
+        err = mkdir(config.filecache_path, 0700);
+        if (err == -1) {
+            printf("Failed to create '%s'\nDoes '~/.local/share` exist?\n");
+            exit(-1);
+        }
     }
 
     // Parse the config file
     config_create(&config, config.config_path);
+    // Refresh the calendars immediately on startup
+    x = config.refresh_time;
 
     lv_init();
+
+    time(&rawtime);
+    data.current_time = mktime(localtime(&rawtime));
+    data.last_synced = mktime(localtime(&rawtime));
 
     /*Linux frame buffer device init*/
     lv_display_t * disp = lv_linux_fbdev_create();
@@ -240,36 +268,46 @@ int main(int argc, char *argv[])
     lv_obj_t* cont = lv_obj_create(lv_screen_active());
 
     do {
-        // Online calendar downloading
-        // Download online calendars with curl
-        for (int x = 0; x < config.calendar_count; x++) {
-            ical_name[0] = '\0';
-            snprintf(ical_name, 9, "%03d.ical", x);
-            ical_file_path[0] = '\0';
-            strcpy(ical_file_path, config.filecache_path);
-            strcat(ical_file_path, ical_name);
+        // Loop every minute for info bar, refresh calendars every x == config.refresh_time
+        x++;
+        if (x >= config.refresh_time) {
+            // Online calendar downloading
+            // Download online calendars with curl
+            for (int x = 0; x < config.calendar_count; x++) {
+                ical_name[0] = '\0';
+                snprintf(ical_name, 9, "%03d.ical", x);
+                ical_file_path[0] = '\0';
+                strcpy(ical_file_path, config.filecache_path);
+                strcat(ical_file_path, ical_name);
 
-            ical_download(config.online_calendars[x], ical_file_path);
-            struct file ical_data;
-            read_file(&ical_data, ical_file_path);
-            icalcomponent *ical_root = icalparser_parse_string(ical_data.content);
-            // TODO: better errors
-            if (ical_root == NULL) { printf("Failed to parse ical data\n"); }
+                ical_download(config.online_calendars[x], ical_file_path);
+                struct file ical_data;
+                read_file(&ical_data, ical_file_path);
+                icalcomponent *ical_root = icalparser_parse_string(ical_data.content);
+                // TODO: better errors
+                if (ical_root == NULL) { printf("Failed to parse ical data\n"); }
 
-            ical2ccal_load_events(&cal, ical_root, ical_name);
+                ical2ccal_load_events(&cal, ical_root, ical_name);
+            }
+            time(&data.last_synced);
+
+            // Rerender the calendar with new events
+            lv_obj_clean(cont);
+            render_calendar(cal, cont, &config);
+
+            // Reset the counter
+            x = 0;
         }
 
-        // Render the lvgl screen
-        render_calendar(cal, cont, &config);
+        // Get the current time
+        time(&data.current_time);
 
+        // Redraw the info_bar (maybe a memory problem?)
+        render_info_bar(&data, cont, &config);
         lv_timer_handler();
 
-        sleep(config.refresh_time * 60);
-
-
-        // Clean up the screen and redraw it
-        lv_obj_clean(cont);
-        
+        // Update every minute
+        sleep(60);
     } while (1);
 
     lv_obj_clean(cont);
