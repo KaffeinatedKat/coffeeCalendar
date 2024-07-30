@@ -1,3 +1,5 @@
+#ifndef ICAL2CCAL
+#define ICAL2CCAL
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -9,3 +11,5 @@
 #include "ccal.h"
 
 void ical2ccal_load_events(struct ccal_calendar *cal, icalcomponent *ical_root, const char *calendar_name);
+
+#endif

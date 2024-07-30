@@ -46,9 +46,9 @@ int is_all_spaces(char *str) {
     return return_value;
 }
 
-int print_config_error(struct values *values) {
-    printf("\n%sThere are errors in your config!%s\n", ANSI_TERMINAL_RED, ANSI_TERMINAL_RESET);
-    printf("\n<==========>\n%s\n<==========>\n\n", values->option_line);
+void print_config_error(struct values *values) {
+    error_log("\nThere are errors in your config file", E_ERROR);
+    printf("\n%s\n\n", values->option_line);
 
     switch (values->err) {
     case NO_ERR:
@@ -78,7 +78,94 @@ int print_config_error(struct values *values) {
     }
 }
 
-int get_config_value(struct file *config_list, const char *option, int type, struct values *values) {
+int parse_value(char *pair, int type, struct values *values) {
+    char *p1, *p2, *p3;
+    char *tok;
+    char *rev;
+    char *endptr;
+    char **list = NULL;
+    int list_size = 0;
+    int list_elements = 0;
+    bool brk = false;
+
+    strsep(&pair, "=");
+    tok = strsep(&pair, "=");
+
+    switch (type) {
+    case LIST:
+        values->val.array = NULL;
+
+        // Find the first bracket
+        p1 = strchr(tok, '[');
+        if (p1 == NULL) { return NO_OPENING_BRACKET; }
+        p1[0] = '=';
+        p3 = p1;
+
+        for (;;) {
+            // Pointers between the value to be extracted
+            p2 = strchr(p1 + 1, ',');
+            if (p2 == NULL) {
+                p2 = strchr(p1 + 1, ']');
+                if (p2 == NULL) { return NO_CLOSING_BRACKET; }
+                brk = true;
+            }
+            p3 = strndup(p1, p2 - p1);
+            p3[0] = '=';
+            // Pass the value into parse_value
+            values->err = parse_value(p3, 1, values);
+            if (values->err != NO_ERR) { return values->err; }
+
+            // Realloc the array
+            if (list_size == list_elements) {
+                if (list_size == 0) list_size = 2;
+                list_size *= 2;
+                list = reallocarray(list, list_size, sizeof(char*));
+                if (list == NULL) { exit(1); }
+            }
+            // Append to the array
+            list[list_elements] = values->val.str;
+            list_elements++;
+
+            // We have parsed the last element
+            if (brk) { break; }
+
+            p1 = p2;
+        }
+
+        values->val.array = list;
+        values->array_size = list_elements;
+        values->type = LIST;
+
+        break;
+    case STRING:
+        rev = strdup(tok);
+        values->val.str = (char*)NULL;
+        values->type = STRING;
+        p1 = strchr(tok, '\"');
+        p2 = strrchr(tok, '\"');
+
+        if (p1 == p2) { return QUOTES_SAME; }
+
+        values->val.str = strndup(p1 + 1, p2 - p1 - 1);
+        break;
+    case INT:
+        values->val.number = 0;
+        values->type = INT;
+
+        if (tok == NULL || \
+            tok[0] == '\0' || \
+            is_all_spaces(tok)) {
+            return NO_VALUE;
+        }
+
+        values->val.number = strtol(tok, &endptr, 10);
+        break;
+    }
+    return NO_ERR;
+}
+
+
+int get_config_value(struct file *config_list, char *option, int type, struct values *values) {
     int option_line_len = 0;
     int option_len = strlen(option);
     int x = 0;
@@ -132,91 +219,6 @@ int get_config_value(struct file *config_list, const char *option, int type, str
     return 0;
 }
 
-int parse_value(char *pair, int type, struct values *values) {
-    char *p1, *p2, *tok;
-
-    strsep(&pair, "=");
-    tok = strsep(&pair, "=");
-
-    switch (type) {
-    case LIST:
-        char **list = NULL;
-        int list_size = 0;
-        int list_elements = 0;
-        char *p3;
-        bool brk = false;
-        values->val.array = NULL;
-
-        // Find the first bracket
-        p1 = strchr(tok, '[');
-        if (p1 == NULL) { return NO_OPENING_BRACKET; }
-        p1[0] = '=';
-        p3 = p1;
-
-        for (;;) {
-            // Pointers between the value to be extracted
-            p2 = strchr(p1 + 1, ',');
-            if (p2 == NULL) {
-                p2 = strchr(p1 + 1, ']');
-                if (p2 == NULL) { return NO_CLOSING_BRACKET; }
-                brk = true;
-            }
-            p3 = strndup(p1, p2 - p1);
-            p3[0] = '=';
-            // Pass the value into parse_value
-            values->err = parse_value(p3, 1, values);
-            if (values->err != NO_ERR) { return values->err; }
-
-            // Realloc the array
-            if (list_size == list_elements) {
-                if (list_size == 0) list_size = 2;
-                list_size *= 2;
-                list = reallocarray(list, list_size, sizeof(char*));
-                if (list == NULL) { exit(1); }
-            }
-            // Append to the array
-            list[list_elements] = values->val.str;
-            list_elements++;
-
-            // We have parsed the last element
-            if (brk) { break; }
-
-            p1 = p2;
-        }
-
-        values->val.array = list;
-        values->array_size = list_elements;
-        values->type = LIST;
-
-        break;
-    case STRING:
-        char *rev = strdup(tok);
-        values->val.str = NULL;
-        values->type = STRING;
-        p1 = strchr(tok, '\"');
-        p2 = strrchr(tok, '\"');
-
-        if (p1 == p2) { return QUOTES_SAME; }
-
-        values->val.str = strndup(p1 + 1, p2 - p1 - 1);
-        break;
-    case INT:
-        char *endptr;
-        values->val.number = NULL;
-        values->type = INT;
-
-        if (tok == NULL || \
-            tok[0] == '\0' || \
-            is_all_spaces(tok)) {
-            return NO_VALUE;
-        }
-
-        values->val.number = strtol(tok, &endptr, 10);
-        break;
-    }
-    return NO_ERR;
-}
-
 int config_create(struct config_options *config, char *config_location) {
     struct file config_list;
     struct values values = {0};
@@ -225,7 +227,7 @@ int config_create(struct config_options *config, char *config_location) {
     int color_size;
     int file;
 
-    file = read_file(&config_list, config_location);
+    file = ccal_read_file(&config_list, config_location);
 
     // Load default config values if no config found
     if (file == -1) {
@@ -234,7 +236,7 @@ int config_create(struct config_options *config, char *config_location) {
         config->screen_height = 1080;
         config->refresh_time = 30;
         config->current_day_bgcolor = 0xADD8E6;
-        return;
+        return 0;
     }
 
 

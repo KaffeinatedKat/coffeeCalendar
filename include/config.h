@@ -1,8 +1,10 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 #include <stdbool.h>
+#include <ctype.h>
 #include <errno.h>
 
+#include "error.h"
 #include "ccal.h"
 
 struct config_options {
@@ -18,4 +20,5 @@ struct config_options {
 };
 
 int config_create(struct config_options *config, char *config_location);
+
 #endif

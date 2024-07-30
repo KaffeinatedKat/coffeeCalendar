@@ -1,6 +1,6 @@
-#include "calendar_utils.h"
+#include "calutils.h"
 
-uint8_t first_day_of_week(uint16_t year, uint8_t month, uint8_t day) {
+uint8_t calutils_first_day_of_week(uint16_t year, uint8_t month, uint8_t day) {
     // Zeller's Congruence algorithm
     if (month < 3) {
         month += 12;
@@ -16,7 +16,7 @@ uint8_t first_day_of_week(uint16_t year, uint8_t month, uint8_t day) {
     return (h + 6) % 7;
 }
 
-const char *month_name(uint8_t month) {
+const char *calutils_month_name(uint8_t month) {
     const char *name;
     switch (month) {
         case 1:
@@ -62,7 +62,7 @@ const char *month_name(uint8_t month) {
     return name;
 }
 
-const char *week_name(uint8_t week_day) {
+const char *calutils_week_name(uint8_t week_day) {
     const char *name;
 
     switch (week_day) {

@@ -8,9 +8,11 @@
 #include <stdbool.h>
 
 #include "config.h"
-#include "calendar_utils.h"
+#include "calutils.h"
 #include "ical2ccal.h"
+#include "ical.h"
 #include "ccal.h"
+
 
 struct info_bar_data {
     time_t last_synced;
@@ -39,12 +41,12 @@ void render_info_bar(struct info_bar_data *data, lv_obj_t *cont, struct config_o
         snprintf(sync_text, 20, "Last synced %dm ago", sync_time);
     }
     lv_obj_t *sync_label = lv_label_create(info_bar);
-    lv_label_set_text_fmt(sync_label, sync_text);
+    lv_label_set_text(sync_label, sync_text);
     lv_obj_set_style_text_color(sync_label, lv_color_hex(0xffffff), 0);
     lv_obj_set_align(sync_label, LV_ALIGN_CENTER);
 
     lv_obj_t *version_label = lv_label_create(info_bar);
-    lv_label_set_text_fmt(version_label, "coffeeCalendar Beta v1.2.0");
+    lv_label_set_text(version_label, "coffeeCalendar Beta v1.2.1");
     lv_obj_set_style_text_color(version_label, lv_color_hex(0xffffff), 0);
     lv_obj_set_align(version_label, LV_ALIGN_LEFT_MID);
 
@@ -63,7 +65,7 @@ void render_calendar(struct ccal_calendar cal, lv_obj_t *cont, struct config_opt
     int8_t current_month = date.tm_mon + 1;
     int8_t current_day = date.tm_mday;
     int8_t current_tile_number;
-    int8_t start_day = first_day_of_week(current_year, current_month, current_day);
+    int8_t start_day = calutils_first_day_of_week(current_year, current_month, current_day);
 
     // lvgl stuff
     const int16_t TILE_H = (config->screen_height / 5) - 14;
@@ -127,7 +129,7 @@ void render_calendar(struct ccal_calendar cal, lv_obj_t *cont, struct config_opt
                 lv_obj_set_style_bg_color(tile, lv_color_hex(0x282828), 0);
 
                 lv_obj_t *week_label = lv_label_create(tile);
-                lv_label_set_text_fmt(week_label, "%s", week_name(c));
+                lv_label_set_text_fmt(week_label, "%s", calutils_week_name(c));
                 lv_obj_set_style_text_color(week_label, lv_color_hex(0xffffff), 0);
                 lv_obj_set_align(week_label, LV_ALIGN_CENTER);
             }
@@ -214,7 +216,7 @@ void render_calendar(struct ccal_calendar cal, lv_obj_t *cont, struct config_opt
             }
 
             lv_label_set_text_fmt(day_label, "%d", current_tile_number);
-            lv_label_set_text_fmt(month_label, "%s", month_name(current_month));
+            lv_label_set_text_fmt(month_label, "%s", calutils_month_name(current_month));
         }
     }
     lv_obj_set_style_pad_row(cont, 0, 0);
@@ -224,8 +226,8 @@ void render_calendar(struct ccal_calendar cal, lv_obj_t *cont, struct config_opt
 
 int main(int argc, char *argv[])
 {
-    static const struct ccal_calendar empty_cal = {0};
-    struct ccal_calendar cal = {0};
+    static const struct ccal_calendar empty_cal = {NULL, 0, 0};
+    struct ccal_calendar cal = {NULL, 0, 0};
     struct info_bar_data data = {0};
     const char *home = getenv("HOME");
     char ical_file_path[4096];
@@ -233,6 +235,8 @@ int main(int argc, char *argv[])
     int x = 0;
     int err = 0;
     time_t rawtime;
+
+    printf("coffeeCalendar Beta v1.2.1\n\n");
 
     // Load file storage path into config
     struct config_options config = {0};
@@ -245,7 +249,7 @@ int main(int argc, char *argv[])
     if (stat(config.filecache_path, &st) == -1) {
         err = mkdir(config.filecache_path, 0700);
         if (err == -1) {
-            printf("Failed to create '%s'\nDoes '~/.local/share` exist?\n");
+            error_log("Failed to create '~/.local/share/coffeeCalendar'\nDoes '~/.local/share` exist?\n", E_ERROR);
             exit(-1);
         }
     }
@@ -254,6 +258,7 @@ int main(int argc, char *argv[])
     config_create(&config, config.config_path);
     // Refresh the calendars immediately on startup
     x = config.refresh_time;
+    printf("Downloading ical files...\n");
 
     lv_init();
 
@@ -287,7 +292,7 @@ int main(int argc, char *argv[])
 
                 ical_download(config.online_calendars[x], ical_file_path);
                 struct file ical_data;
-                read_file(&ical_data, ical_file_path);
+                ccal_read_file(&ical_data, ical_file_path);
                 icalcomponent *ical_root = icalparser_parse_string(ical_data.content);
                 // TODO: better errors
                 if (ical_root == NULL) { printf("Failed to parse ical data\n"); }

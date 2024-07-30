@@ -62,7 +62,7 @@ void process_event(struct ccal_calendar *cal, icalcomponent *event, char *calend
 
         struct tm *time_info = gmtime(&epoch_time);
         // Change event timezone if it's not in the current zone
-        if (start_time.zone && strcmp(icaltimezone_get_tzid(start_time.zone), "UTC") == 0) {
+        if (start_time.zone && strcmp(icaltimezone_get_tzid((icaltimezone*)start_time.zone), "UTC") == 0) {
             time_info = localtime(&epoch_time);
         }
 
@@ -90,7 +90,7 @@ void process_event(struct ccal_calendar *cal, icalcomponent *event, char *calend
 
         struct tm *time_info = gmtime(&epoch_time);
         // Change event timezone if it's not in the current zone
-        if (end_time.zone && strcmp(icaltimezone_get_tzid(end_time.zone), "UTC") == 0) {
+        if (end_time.zone && strcmp(icaltimezone_get_tzid((icaltimezone*)end_time.zone), "UTC") == 0) {
             time_info = localtime(&epoch_time);
         }
 
@@ -126,7 +126,7 @@ bool is_exclude_date(icalcomponent *event, icaltimetype date) {
     return false;
 }
 
-void add_recurring_events(struct ccal_calendar *cal, icalcomponent *ical_root, icalcomponent *event, const char *calendar_name) {
+void add_recurring_events(struct ccal_calendar *cal, icalcomponent *ical_root, icalcomponent *event, char *calendar_name) {
     int max_number_of_events = 1825;
     bool already_exists = false;
 
@@ -167,7 +167,7 @@ void add_recurring_events(struct ccal_calendar *cal, icalcomponent *ical_root, i
         struct tm *local_time = localtime(&array[i]);
 
         icalcomponent *expanded_event = event;
-        icaltimetype expanded_event_time = icaltime_from_timet_with_zone(array[i], 0, icaltimezone_get_builtin_timezone(start_time.zone));
+        icaltimetype expanded_event_time = icaltime_from_timet_with_zone(array[i], 0, icaltimezone_get_builtin_timezone("localtime"));
 
 
         // See line 149
@@ -230,7 +230,7 @@ void add_recurring_events(struct ccal_calendar *cal, icalcomponent *ical_root, i
     }
 }
 
-void ical2ccal_load_events(struct ccal_calendar *cal, icalcomponent *ical_root, const char *calendar_name) {
+void ical2ccal_load_events(struct ccal_calendar *cal, icalcomponent *ical_root, char *calendar_name) {
     // Iterate through each VEVENT component in the iCalendar data
     for (icalcomponent *event = icalcomponent_get_first_component(ical_root, ICAL_VEVENT_COMPONENT);
          event != NULL;
@@ -243,7 +243,7 @@ void ical2ccal_load_events(struct ccal_calendar *cal, icalcomponent *ical_root, 
         // Recurring event
         if (rrule_property) {
             struct file ical_root;
-            read_file(&ical_root, calendar_name);
+            ccal_read_file(&ical_root, calendar_name);
 
             add_recurring_events(cal, icalparser_parse_string(ical_root.content), event, calendar_name);
         } else {
@@ -251,31 +251,4 @@ void ical2ccal_load_events(struct ccal_calendar *cal, icalcomponent *ical_root, 
         }
     }
 }
-
-
-/*
-int main(int  argc, char *argv[]) {
-    if (argc != 2) {
-        fprintf(stderr, "Usage: %s <ical input file>\n", argv[0]);
-        return 1;
-    }
-
-    char *ical_data = read_file(argv[1]);
-
-    icalcomponent *ical_root = icalparser_parse_string(ical_data);
-    if (ical_root == NULL) {
-        fprintf(stderr, "Error parsing iCalendar data\n");
-        return 1;
-    }
-
-    // Process regular events
-    process_events(ical_root, argv[1]);
-
-    // Clean up
-    free(ical_data);
-    icalcomponent_free(ical_root);
-
-    return 0;
-}
-*/
 

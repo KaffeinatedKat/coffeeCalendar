@@ -1,6 +1,6 @@
 #include "ccal.h"
 
-int read_file(struct file *event_list, const char *ccal_file) {
+int ccal_read_file(struct file *event_list, const char *ccal_file) {
 	int fd;
 	char *map;
 	struct stat st;
@@ -66,50 +66,10 @@ int ccal_add_event(struct ccal_calendar *cal, struct ccal_event event) {
 	return 0;
 }
 
-int date_ascending(const void *va, const void *vb) {
+int date_ascending(void *va, void *vb) {
 	struct ccal_event *a = va, *b = vb;
 	time_t atime = mktime(&a->date), btime = mktime(&b->date);
 	return atime < btime ? -1 : atime > btime;
-}
-
-int ccal_calendar_create(struct ccal_calendar *cal, char *file) {
-	char *out;
-	struct ccal_event event = {0}; // A single parsed event
-	struct file event_list; // The list of all events to be parsed
-	read_file(&event_list, file);
-
-	do {
-		if (parse_pair(&event_list, "%N", &out) != -1) {
-			event.name = out;
-		}
-		if (parse_pair(&event_list, "%AD", &out) != -1) {
-			if (strcmp(out, "No") == 0) event.all_day = 0;
-			if (strcmp(out, "Yes") == 0) event.all_day = 1;
-			free(out);
-		}
-		if (parse_pair(&event_list, "%D", &out) != -1) {
-			strptime(out, "%Y/%m/%d", &event.date);
-			free(out);
-		}
-		if (parse_pair(&event_list, "%B", &out) != -1) {
-			strptime(out, "%H:%M", &event.start);
-			free(out);
-		}
-		if (parse_pair(&event_list, "%E", &out) != -1) {
-			strptime(out, "%H:%M", &event.end);
-			free(out);
-		}
-		if (parse_pair(&event_list, "%C", &out) != -1) {
-			event.cal_name = out;
-		}
-		ccal_add_event(cal, event);
-		memset(&event, 0, sizeof(struct ccal_event));
-	} while (increment_line(&event_list) != -1);
-
-	qsort(cal->events, cal->nevents, sizeof(struct ccal_event), date_ascending);
-	free(event_list.content);
-
-	return 0;
 }
 
 int ccal_calendar_destroy(struct ccal_calendar *cal) {
