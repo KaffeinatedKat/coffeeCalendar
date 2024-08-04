@@ -21,7 +21,7 @@ coffeeCalendar is a linux framebuffer digital calendar made to replace a traditi
 Then run these commands to download and compile coffeeCalendar
 
 ```bash
-git clone https://github.com/KaffeinatedKat/coffeeCalendar.git
+git clone https://github.com/KaffeinatedKat/coffeeCalendar.git --recursive
 cd coffeeCalendar
 mkdir build && cd build
 cmake ..
@@ -95,6 +95,8 @@ cal_refresh_time = 30
 
 ### Images
 
-![coffeeCalendar UI](images/framebuffer_image.png)
+What coffeeCalendar looks like
+![](images/framebuffer_image.png)
 
+coffeeCalendar dynamically increasing the tile size to fit all events
 ![coffeeCalendar with expanded tile sizes to show many events](images/expanded_tiles.png)
