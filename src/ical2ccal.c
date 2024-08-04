@@ -105,6 +105,12 @@ void process_event(struct ccal_calendar *cal, icalcomponent *event, char *calend
     ccal_event.cal_name = calendar_name;
 
     char *endptr;
+    char *p = strchr(calendar_name, '\0');
+
+    // Copy just the number part of the file path
+    calendar_name = strndup(p - 8, 3);
+
+    // Change it to an int for color indexing
     ccal_event.color_index = strtol(calendar_name, &endptr, 10);
 
     ccal_add_event(cal, ccal_event);
@@ -242,10 +248,10 @@ void ical2ccal_load_events(struct ccal_calendar *cal, icalcomponent *ical_root, 
 
         // Recurring event
         if (rrule_property) {
-            struct file ical_root;
-            ccal_read_file(&ical_root, calendar_name);
+            struct file new_ical_root;
+            ccal_read_file(&new_ical_root, calendar_name);
 
-            add_recurring_events(cal, icalparser_parse_string(ical_root.content), event, calendar_name);
+            add_recurring_events(cal, icalparser_parse_string(new_ical_root.content), event, calendar_name);
         } else {
             process_event(cal, event, calendar_name);
         }
