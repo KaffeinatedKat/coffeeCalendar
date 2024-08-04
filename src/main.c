@@ -70,8 +70,8 @@ void render_calendar(struct ccal_calendar cal, lv_obj_t *cont, struct config_opt
     // lvgl stuff
     const int16_t TILE_H = (config->screen_height / 5) - 14;
     const int16_t TILE_W = (config->screen_width / 7);
-    int16_t tile_x = TILE_W * -1;
-    int16_t tile_y = TILE_H * -1;
+    int16_t tile_x = TILE_W;
+    int16_t tile_y = TILE_H;
     int16_t modified_tile_h = TILE_H;
     int16_t modified_tile_w = TILE_W;
 
@@ -90,26 +90,32 @@ void render_calendar(struct ccal_calendar cal, lv_obj_t *cont, struct config_opt
 
     // Get the first tile's date
     date.tm_mday = current_day - start_day - 1;
+    current_tile_number = date.tm_mday;
+    current_month = date.tm_mon + 1;
+    current_year = date.tm_year + 1900;
     mktime(&date);
+
+    int add_y = 0;
+    tile_y = 0;
 
     // Actually rendering the calendar
     for (int r = 0; r < 5; r++) {
         int16_t max_events_this_week = 0;
+
         tile_x = TILE_W * -1;
-        tile_y += TILE_H;
-
-        max_events_this_week = ccal_get_max_events_for_week(&cal, current_year, current_month, current_tile_number);
-
-        // Increase the size of the tiles to fit all the events
-        if (max_events_this_week > 3 && r != 0) {
-            modified_tile_h += 50 * (max_events_this_week - 3);
-            tile_y += 50 * (max_events_this_week - 3);
-        } else {
-            modified_tile_h += TILE_H;
-        }
+        add_y = TILE_H;
+        max_events_this_week = ccal_get_max_events_for_week(&cal, date);
 
         if (r == 0) {
             tile_y += 40;
+        }
+
+        // Increase the size of the tiles to fit all the events
+        if (max_events_this_week > 3) {
+            modified_tile_h += 50 * (max_events_this_week - 3);
+            add_y += 50 * (max_events_this_week - 3);
+        } else {
+            modified_tile_h += TILE_H;
         }
 
         for (int c = 0; c < 7; c++) {
@@ -119,8 +125,8 @@ void render_calendar(struct ccal_calendar cal, lv_obj_t *cont, struct config_opt
 
             tile_x += TILE_W;
 
+            // Top bar with days of the week
             if (r == 0) {
-                // Top bar with days of the week
                 lv_obj_t *tile = lv_obj_create(cont);
                 lv_obj_set_size(tile, TILE_W, 40);
                 lv_obj_set_pos(tile, tile_x - 1, 0);
@@ -133,7 +139,6 @@ void render_calendar(struct ccal_calendar cal, lv_obj_t *cont, struct config_opt
                 lv_obj_set_style_text_color(week_label, lv_color_hex(0xffffff), 0);
                 lv_obj_set_align(week_label, LV_ALIGN_CENTER);
             }
-
 
             lv_obj_t * tile = lv_obj_create(cont);
             lv_obj_set_size(tile, modified_tile_w, modified_tile_h);
@@ -218,6 +223,7 @@ void render_calendar(struct ccal_calendar cal, lv_obj_t *cont, struct config_opt
             lv_label_set_text_fmt(day_label, "%d", current_tile_number);
             lv_label_set_text_fmt(month_label, "%s", calutils_month_name(current_month));
         }
+        tile_y += add_y;
     }
     lv_obj_set_style_pad_row(cont, 0, 0);
     lv_obj_set_style_pad_column(cont, 0, 0);

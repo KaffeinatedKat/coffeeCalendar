@@ -82,12 +82,9 @@ int ccal_get_number_of_events(struct ccal_calendar *cal, struct tm date) {
 	struct ccal_event *event;
 	for (int i = 0; i < cal->nevents; i++) {
 		event = &cal->events[i];
-		if (event->date.tm_year + 1900 < date.tm_year) continue; \
-		else if (event->date.tm_year + 1900 > date.tm_year) break;
-		if (event->date.tm_mon + 1 < date.tm_mon) continue; \
-		else if (event->date.tm_mon + 1 > date.tm_mon) break;
-		if (event->date.tm_mday < date.tm_mday) continue; \
-		else if (event->date.tm_mday > date.tm_mday) break;
+		if (event->date.tm_year + 1900 != date.tm_year) continue;
+		if (event->date.tm_mon + 1 != date.tm_mon) continue;
+		if (event->date.tm_mday != date.tm_mday) continue;
 
 		events++;
 	}
@@ -95,15 +92,15 @@ int ccal_get_number_of_events(struct ccal_calendar *cal, struct tm date) {
 	return events;
 }
 
-int ccal_get_max_events_for_week(struct ccal_calendar *cal, int16_t year, int8_t month, int8_t day) {
+int ccal_get_max_events_for_week(struct ccal_calendar *cal, struct tm date) {
 	int tmp, max = 0;
-	struct tm date = {
-		.tm_year = year,
-		.tm_mon = month,
-		.tm_mday = day,
-	};
-	time_t t = mktime(&date);
-	t -= date.tm_wday * (60 * 60 * 24);
+    struct tm new_date = date;
+    time_t t;
+
+    new_date.tm_year += 1900;
+    new_date.tm_mon += 1;
+    new_date.tm_mday += 1;
+    t = mktime(&new_date);
 
 	for (int i = 0; i < 7; i++) {
 		localtime_r(&t, &date);
