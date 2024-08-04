@@ -37,7 +37,7 @@ int ccal_read_file(struct file *event_list, const char *ccal_file);
 int ccal_add_event(struct ccal_calendar *cal, struct ccal_event event);
 int ccal_calendar_create(struct ccal_calendar *cal, char *file);
 int ccal_calendar_destroy(struct ccal_calendar *cal);
-int ccal_get_max_events_for_week(struct ccal_calendar *cal, int16_t year, int8_t month, int8_t day);
+int ccal_get_max_events_for_week(struct ccal_calendar *cal, struct tm date);
 int ccal_get_number_of_events(struct ccal_calendar *cal, struct tm date);
 
 #endif
