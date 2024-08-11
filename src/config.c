@@ -236,6 +236,7 @@ int config_create(struct config_options *config, char *config_location) {
         config->screen_height = 1080;
         config->refresh_time = 30;
         config->current_day_bgcolor = 0xADD8E6;
+        config->log_level = 0;
         return 0;
     }
 
@@ -260,6 +261,9 @@ int config_create(struct config_options *config, char *config_location) {
     get_config_value(&config_list, "online_calendar_colors", LIST, &values);
     config->calendar_colors = values.val.array;
     color_size = values.array_size;
+
+    get_config_value(&config_list, "log_level", INT, &values);
+    config->log_level = values.val.number;
 
     if (color_size != calendar_size) {
         values.err = CAL_COLOR_SIZE_MISMATCH;

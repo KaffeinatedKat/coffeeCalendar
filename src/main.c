@@ -46,7 +46,7 @@ void render_info_bar(struct info_bar_data *data, lv_obj_t *cont, struct config_o
     lv_obj_set_align(sync_label, LV_ALIGN_CENTER);
 
     lv_obj_t *version_label = lv_label_create(info_bar);
-    lv_label_set_text(version_label, "coffeeCalendar Beta v1.2.2");
+    lv_label_set_text(version_label, "coffeeCalendar Beta v1.2.3");
     lv_obj_set_style_text_color(version_label, lv_color_hex(0xffffff), 0);
     lv_obj_set_align(version_label, LV_ALIGN_LEFT_MID);
 
@@ -61,6 +61,7 @@ void render_calendar(struct ccal_calendar cal, lv_obj_t *cont, struct config_opt
     // time 
     time_t t = time(NULL);
     struct tm date = *localtime(&t);
+    date.tm_mday = 2;
     int16_t current_year = date.tm_year + 1900;
     int8_t current_month = date.tm_mon + 1;
     int8_t current_day = date.tm_mday;
@@ -166,6 +167,9 @@ void render_calendar(struct ccal_calendar cal, lv_obj_t *cont, struct config_opt
                 lv_obj_set_style_text_color(day_label, lv_color_hex(0xffffff), 0);
                 lv_obj_set_style_text_color(month_label, lv_color_hex(0xffffff), 0);
                 lv_obj_set_style_bg_color(tile, lv_color_hex(config->current_day_bgcolor), 0);
+                if (config->log_level > 1) {
+                    printf("%s", ANSI_YELLOW);
+                }
             }
 
             // Count the tiles up
@@ -176,6 +180,10 @@ void render_calendar(struct ccal_calendar cal, lv_obj_t *cont, struct config_opt
             current_tile_number = date.tm_mday;
             current_month = date.tm_mon + 1;
             current_year = date.tm_year + 1900;
+
+            if (config->log_level > 1) {
+                printf("%02d %s", current_tile_number, ANSI_RESET);
+            }
 
             // Loop through each event and add it to the day box
             for (int x = 0; x < cal.nevents; x++) {
@@ -223,6 +231,11 @@ void render_calendar(struct ccal_calendar cal, lv_obj_t *cont, struct config_opt
             lv_label_set_text_fmt(day_label, "%d", current_tile_number);
             lv_label_set_text_fmt(month_label, "%s", calutils_month_name(current_month));
         }
+
+        if (config->log_level > 1) {
+            printf("\n");
+        }
+
         tile_y += add_y;
     }
     lv_obj_set_style_pad_row(cont, 0, 0);
@@ -242,7 +255,7 @@ int main(int argc, char *argv[])
     int err = 0;
     time_t rawtime;
 
-    printf("coffeeCalendar Beta v1.2.2\n\n");
+    printf("coffeeCalendar Beta v1.2.3\n\n");
 
     // Load file storage path into config
     struct config_options config = {0};
@@ -264,7 +277,9 @@ int main(int argc, char *argv[])
     config_create(&config, config.config_path);
     // Refresh the calendars immediately on startup
     x = config.refresh_time;
-    printf("Downloading ical files...\n");
+    if (config.log_level > 0) {
+        printf("Downloading ical files...\n");
+    }
 
     lv_init();
 
@@ -300,15 +315,18 @@ int main(int argc, char *argv[])
                 struct file ical_data;
                 ccal_read_file(&ical_data, ical_file_path);
                 icalcomponent *ical_root = icalparser_parse_string(ical_data.content);
-                // TODO: better errors
-                if (ical_root == NULL) { printf("Failed to parse ical data\n"); }
+                //if (ical_root == NULL) { printf("Failed to parse ical data\n"); }
 
-                ical2ccal_load_events(&cal, ical_root, ical_file_path);
+                ical2ccal_load_events(&cal, ical_root, ical_file_path, config.log_level);
             }
             time(&data.last_synced);
 
             // Rerender the calendar with new events
             lv_obj_clean(cont);
+
+            if (config.log_level > 1) {
+                printf("Calendar tiles:\n");
+            }
             render_calendar(cal, cont, &config);
 
             // Reset the counter

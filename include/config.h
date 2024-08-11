@@ -12,6 +12,7 @@ struct config_options {
     int screen_width;
     int refresh_time;
     int calendar_count;
+    int log_level;
     long int current_day_bgcolor;
     char config_path[2048];
     char filecache_path[2048];

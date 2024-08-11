@@ -1,119 +1,99 @@
-// ical2ccal.c - converts an input ical file to the ccal format and outputs it to stdout
-//
-// The format is as follows
-// %NEvent Name%N %ADYes/No%AD %Dyyyy/mm/dd%D %Bhh:mm%B %Ehh:mm%E %Cfile_name%C
-//
-// Each event is contained to a single line, and is
-// designed to be easily searchable by regex look[ahead/behind]
-//
-// %N: Event name
-// %AD: All day [Yes/No]
-// %D: Date of the event
-// %B: Event start time
-// %E Event end time
-// %C iCal file name
-//
-// %B and %E are not set if %AD is Yes
-//
-// e.g.
-//
-// Single timed event
-// %NJohn Taco Smell%N %ADNo%AD %D20240304%D %B1700%B %E2200%E %Cjohn_work.ics%C
-//
-// Single all day event
-// %NJohn's Birthday%N %ADYes%AD %D20240922%D %Cbirthdays.ics%C
-//
-// Multiday events are simply added as multiplie lines
-// %NCamping%N %AD%Yes%AD %D20240820%D %Cfamily.ics%C
-// %NCamping%N %AD%Yes%AD %D20240821%D %Cfamily.ics%C
-// %NCamping%N %AD%Yes%AD %D20240822%D %Cfamily.ics%C
-// %NCamping%N %AD%Yes%AD %D20240823%D %Cfamily.ics%C
+#include "ical2ccal.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#include <libical/ical.h>
-#include <time.h>
-#include <string.h>
+struct events_status {
+    int nprocessed_events;
+    int nerror_events;
+    int nrenamed_events;
+};
 
-#include "config.h"
-
-void process_event(struct ccal_calendar *cal, icalcomponent *event, char *calendar_name) {
+struct events_status process_event(struct ccal_calendar *cal, icalcomponent *event, char *calendar_name) {
     // The ccal event to load the ical data into
     struct ccal_event ccal_event;
+    struct events_status ret_val = {0};
+    struct tm *time_info;
+    struct icaltimetype start_time;
+    struct icaltimetype end_time;
+    icaltimezone *local_zone;
+    time_t epoch_time;
+    char *endptr;
+    const char *event_name;
 
-    // Get the SUMMARY property, which represents the event name
+    // Get the SUMMARY property
     icalproperty *summary_property = icalcomponent_get_first_property(event, ICAL_SUMMARY_PROPERTY);
-
-    if (summary_property) {
-        const char *event_name = icalproperty_get_summary(summary_property);
-        ccal_event.name = event_name;
-    } else {
-        return;
+    if (!summary_property) {
+        ret_val.nerror_events++;
+        return ret_val;
     }
 
-    // Get the DTSTART property, which represents the start date and time
+    event_name = icalproperty_get_summary(summary_property);
+    ccal_event.name = event_name;
+
+    // Get the DTSTART property
     icalproperty *start_property = icalcomponent_get_first_property(event, ICAL_DTSTART_PROPERTY);
+    if (!start_property) {
+        ret_val.nerror_events++;
+        return ret_val;
+    }
 
-    if (start_property) {
-        struct icaltimetype start_time = icalproperty_get_dtstart(start_property);
-        icaltimezone *local_zone = icaltimezone_get_builtin_timezone("localtime");
-        time_t epoch_time = icaltime_as_timet_with_zone(start_time, local_zone);
+    start_time = icalproperty_get_dtstart(start_property);
+    local_zone = icaltimezone_get_builtin_timezone("localtime");
+    epoch_time = icaltime_as_timet_with_zone(start_time, local_zone);
+    time_info = gmtime(&epoch_time);
+    // Event date
+    ccal_event.date = *time_info;
 
-        struct tm *time_info = gmtime(&epoch_time);
-        // Change event timezone if it's not in the current zone
-        if (start_time.zone && strcmp(icaltimezone_get_tzid((icaltimezone*)start_time.zone), "UTC") == 0) {
-            time_info = localtime(&epoch_time);
-        }
+    // Change event timezone if it's not in the current zone
+    if (start_time.zone && strcmp(icaltimezone_get_tzid((icaltimezone*)start_time.zone), "UTC") == 0) {
+        time_info = localtime(&epoch_time);
+    }
 
-        // Event date
-        ccal_event.date = *time_info;
-
-        // Check if it's an all-day event
-        if (icaltime_is_date(start_time) != 0) {
-            ccal_event.all_day = 1;
-        } else {
-            ccal_event.all_day = 0;
-            ccal_event.start = *time_info;
-        }
+    // All day / Start time info
+    if (icaltime_is_date(start_time) != 0) {
+        ccal_event.all_day = 1;
     } else {
-        return;
+        ccal_event.all_day = 0;
+        ccal_event.start = *time_info;
     }
 
     // Get the DTEND property, which represents the end date and time
     icalproperty *end_property = icalcomponent_get_first_property(event, ICAL_DTEND_PROPERTY);
-
-    if (end_property) {
-        struct icaltimetype end_time = icalproperty_get_dtend(end_property);
-        icaltimezone *local_zone = icaltimezone_get_builtin_timezone("localtime");
-        time_t epoch_time = icaltime_as_timet_with_zone(end_time, local_zone);
-
-        struct tm *time_info = gmtime(&epoch_time);
-        // Change event timezone if it's not in the current zone
-        if (end_time.zone && strcmp(icaltimezone_get_tzid((icaltimezone*)end_time.zone), "UTC") == 0) {
-            time_info = localtime(&epoch_time);
-        }
-
-        // Check if it's an all-day event
-        if (icaltime_is_date(end_time) == 0) {
-            ccal_event.end = *time_info;
-        }
-    } else {
-        return;
+    if (!end_property) {
+        ret_val.nerror_events++;
+        return ret_val;
     }
 
+    end_time = icalproperty_get_dtend(end_property);
+    local_zone = icaltimezone_get_builtin_timezone("localtime");
+    epoch_time = icaltime_as_timet_with_zone(end_time, local_zone);
+    time_info = gmtime(&epoch_time);
+
+    // Change event timezone if it's not in the current zone
+    if (end_time.zone && strcmp(icaltimezone_get_tzid((icaltimezone*)end_time.zone), "UTC") == 0) {
+        time_info = localtime(&epoch_time);
+    }
+
+    // Check if it's an all-day event
+    if (icaltime_is_date(end_time) == 0) {
+        ccal_event.end = *time_info;
+    }
+
+    // Might not be useful? TODO: Find out
     ccal_event.cal_name = calendar_name;
 
-    char *endptr;
-    char *p = strchr(calendar_name, '\0');
+    // End of the calendar path
+    endptr = strchr(calendar_name, '\0');
 
     // Copy just the number part of the file path
-    calendar_name = strndup(p - 8, 3);
+    calendar_name = strndup(endptr - 8, 3);
 
     // Change it to an int for color indexing
     ccal_event.color_index = strtol(calendar_name, &endptr, 10);
 
+    // Add the event to the event list
     ccal_add_event(cal, ccal_event);
+    ret_val.nprocessed_events++;
+
+    return ret_val;
 }
 
 bool is_exclude_date(icalcomponent *event, icaltimetype date) {
@@ -132,7 +112,8 @@ bool is_exclude_date(icalcomponent *event, icaltimetype date) {
     return false;
 }
 
-void add_recurring_events(struct ccal_calendar *cal, icalcomponent *ical_root, icalcomponent *event, char *calendar_name) {
+struct events_status add_recurring_events(struct ccal_calendar *cal, icalcomponent *ical_root, icalcomponent *event, char *calendar_name) {
+    struct events_status ret_val = {0};
     int max_number_of_events = 1825;
     bool already_exists = false;
 
@@ -146,7 +127,7 @@ void add_recurring_events(struct ccal_calendar *cal, icalcomponent *ical_root, i
     icaltimezone *local_zone = icaltimezone_get_builtin_timezone("localtime");
     time_t epoch_time = icaltime_as_timet_with_zone(start_time, local_zone);
 
-    struct tm *time_info = localtime(&epoch_time);//localtime(&epoch_time);
+    struct tm *time_info = localtime(&epoch_time);
 
     // Expand the event out 5 years ahead
     //
@@ -171,6 +152,7 @@ void add_recurring_events(struct ccal_calendar *cal, icalcomponent *ical_root, i
         already_exists = false;
         icaltimetype today = icaltime_today();
         struct tm *local_time = localtime(&array[i]);
+        struct events_status tmp_val = {0};
 
         icalcomponent *expanded_event = event;
         icaltimetype expanded_event_time = icaltime_from_timet_with_zone(array[i], 0, icaltimezone_get_builtin_timezone("localtime"));
@@ -209,34 +191,50 @@ void add_recurring_events(struct ccal_calendar *cal, icalcomponent *ical_root, i
              other_event != NULL;
              other_event = icalcomponent_get_next_component(ical_root, ICAL_VEVENT_COMPONENT)) {
             recurrence_id = icalcomponent_get_first_property(other_event, ICAL_RECURRENCEID_PROPERTY);
-            // Check if the event has a recurrence_id and
-            if (recurrence_id) {
-                struct icaltimetype recurrence_id_time = icalproperty_get_recurrenceid(recurrence_id);
-
-                // If the recurrence_id is the same as the start time of the 
-                // expanded event
-                if (icaltime_compare(expanded_event_time, recurrence_id_time) == 0) {
-                    // And the UID's are the same
-                    if (strcmp(icalcomponent_get_uid(event), icalcomponent_get_uid(other_event)) == 0) {
-                        // Then this event has been modified and placed elsewhere,
-                        // and we must exclude it to prevent duplicate events
-                        already_exists = true;
-                    }
-                }
+            // Check if the event has a recurrence_id
+            if (!recurrence_id) {
+                continue;
             }
+            struct icaltimetype recurrence_id_time = icalproperty_get_recurrenceid(recurrence_id);
+
+            // If the recurrence_id is the same as the start time of the 
+            // expanded event
+            if (icaltime_compare(expanded_event_time, recurrence_id_time) != 0) {
+                continue;
+            }
+
+            // And the UID's are the same
+            if (strcmp(icalcomponent_get_uid(event), icalcomponent_get_uid(other_event)) != 0) {
+                continue;
+            }
+            // Then this event has been modified and placed elsewhere,
+            // and we must exclude it to prevent duplicate events
+            already_exists = true;
+            ret_val.nrenamed_events++;
         }
 
 
         // Add the event to the list if it's not an excluded date
         if (array[i] != 0 && !is_exclude_date(event, expanded_event_time) && !already_exists) {
-            process_event(cal, expanded_event, calendar_name);
+            tmp_val = process_event(cal, expanded_event, calendar_name);
+            ret_val.nerror_events += tmp_val.nerror_events;
+            ret_val.nprocessed_events += tmp_val.nprocessed_events;
         }
 
         icalcomponent_free(expanded_event);
     }
+
+    return ret_val;
 }
 
-void ical2ccal_load_events(struct ccal_calendar *cal, icalcomponent *ical_root, char *calendar_name) {
+int ical2ccal_load_events(struct ccal_calendar *cal, icalcomponent *ical_root, char *calendar_name, int log_level) {
+    struct events_status output = {0};
+    int total_events = 0;
+    int renamed_duplicates = 0;        
+    int events_with_errors = 0;
+    char *event_count_color = ANSI_RESET;
+    char *corrupt_event_color = ANSI_RESET;
+
     // Iterate through each VEVENT component in the iCalendar data
     for (icalcomponent *event = icalcomponent_get_first_component(ical_root, ICAL_VEVENT_COMPONENT);
          event != NULL;
@@ -251,10 +249,30 @@ void ical2ccal_load_events(struct ccal_calendar *cal, icalcomponent *ical_root, 
             struct file new_ical_root;
             ccal_read_file(&new_ical_root, calendar_name);
 
-            add_recurring_events(cal, icalparser_parse_string(new_ical_root.content), event, calendar_name);
+            output = add_recurring_events(cal, icalparser_parse_string(new_ical_root.content), event, calendar_name);
         } else {
-            process_event(cal, event, calendar_name);
+            output = process_event(cal, event, calendar_name);
         }
+
+        total_events += output.nprocessed_events;
+        renamed_duplicates += output.nrenamed_events;
+        events_with_errors += output.nerror_events;
+    }
+
+    if (total_events == 0) {
+        event_count_color = ANSI_RED;
+        log_level = 1;
+    }
+    if (events_with_errors > 0) {
+        corrupt_event_color = ANSI_RED;
+        log_level = 1;
+    }
+
+    if (log_level > 0) {
+        printf("Parsing events @ `%s`\n", calendar_name);
+        printf("%s[%02d] Successfully parsed events%s\n", event_count_color, total_events, ANSI_RESET);
+        printf("[%02d] Renamed duplicates excluded\n", renamed_duplicates);
+        printf("%s[%02d] Corrupt events%s\n\n", corrupt_event_color, events_with_errors, ANSI_RESET);
     }
 }
 

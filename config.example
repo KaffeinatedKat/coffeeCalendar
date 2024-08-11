@@ -14,6 +14,12 @@ online_calendars = ["https://example.com/basic.ics", "https://test.xyz/some_data
 // order
 online_calendar_colors = ["0x023E8A", "0x276221"]
 
+// Will log anything including and before the current value
+// 0: only log errors
+// 1: log ical event parsing
+// 2: log calendar tile values
+log_level = 0
+
 // The bgcolor of the current day's tile
 current_day_bgcolor = "0xADD8E6"
 
