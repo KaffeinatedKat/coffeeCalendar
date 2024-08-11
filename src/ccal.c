@@ -54,7 +54,14 @@ int increment_line(struct file *event_list) {
 }
 
 
-int ccal_add_event(struct ccal_calendar *cal, struct ccal_event event) {
+int ccal_add_event(struct ccal_calendar *cal, struct ccal_event event, char **blacklist, int blacklist_size) {
+    // Don't add blacklisted events
+    for (int x = 0; x < blacklist_size; x++) {
+        if (strcmp(event.name, blacklist[x]) == 0) {
+            return 0;
+        }
+    }
+
 	if (cal->nevents == cal->size) {
 		if (cal->size == 0) cal->size = 4;
 		else cal->size *= 2;

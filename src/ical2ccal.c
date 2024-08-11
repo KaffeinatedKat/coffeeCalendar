@@ -6,7 +6,7 @@ struct events_status {
     int nrenamed_events;
 };
 
-struct events_status process_event(struct ccal_calendar *cal, icalcomponent *event, char *calendar_name) {
+struct events_status process_event(struct ccal_calendar *cal, icalcomponent *event, char **blacklist, int blacklist_size, char *calendar_name) {
     // The ccal event to load the ical data into
     struct ccal_event ccal_event;
     struct events_status ret_val = {0};
@@ -90,7 +90,7 @@ struct events_status process_event(struct ccal_calendar *cal, icalcomponent *eve
     ccal_event.color_index = strtol(calendar_name, &endptr, 10);
 
     // Add the event to the event list
-    ccal_add_event(cal, ccal_event);
+    ccal_add_event(cal, ccal_event, blacklist, blacklist_size);
     ret_val.nprocessed_events++;
 
     return ret_val;
@@ -112,7 +112,7 @@ bool is_exclude_date(icalcomponent *event, icaltimetype date) {
     return false;
 }
 
-struct events_status add_recurring_events(struct ccal_calendar *cal, icalcomponent *ical_root, icalcomponent *event, char *calendar_name) {
+struct events_status add_recurring_events(struct ccal_calendar *cal, icalcomponent *ical_root, icalcomponent *event, char **blacklist, int blacklist_size, char *calendar_name) {
     struct events_status ret_val = {0};
     int max_number_of_events = 1825;
     bool already_exists = false;
@@ -216,7 +216,7 @@ struct events_status add_recurring_events(struct ccal_calendar *cal, icalcompone
 
         // Add the event to the list if it's not an excluded date
         if (array[i] != 0 && !is_exclude_date(event, expanded_event_time) && !already_exists) {
-            tmp_val = process_event(cal, expanded_event, calendar_name);
+            tmp_val = process_event(cal, expanded_event, blacklist, blacklist_size, calendar_name);
             ret_val.nerror_events += tmp_val.nerror_events;
             ret_val.nprocessed_events += tmp_val.nprocessed_events;
         }
@@ -227,7 +227,7 @@ struct events_status add_recurring_events(struct ccal_calendar *cal, icalcompone
     return ret_val;
 }
 
-int ical2ccal_load_events(struct ccal_calendar *cal, icalcomponent *ical_root, char *calendar_name, int log_level) {
+int ical2ccal_load_events(struct ccal_calendar *cal, icalcomponent *ical_root, char *calendar_name, char **blacklist, int blacklist_size, int log_level) {
     struct events_status output = {0};
     int total_events = 0;
     int renamed_duplicates = 0;        
@@ -249,9 +249,9 @@ int ical2ccal_load_events(struct ccal_calendar *cal, icalcomponent *ical_root, c
             struct file new_ical_root;
             ccal_read_file(&new_ical_root, calendar_name);
 
-            output = add_recurring_events(cal, icalparser_parse_string(new_ical_root.content), event, calendar_name);
+            output = add_recurring_events(cal, icalparser_parse_string(new_ical_root.content), event, blacklist, blacklist_size, calendar_name);
         } else {
-            output = process_event(cal, event, calendar_name);
+            output = process_event(cal, event, blacklist, blacklist_size, calendar_name);
         }
 
         total_events += output.nprocessed_events;

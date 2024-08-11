@@ -17,6 +17,6 @@ enum ic2cc_errs {
     IC2CC_NO_END_INFO,
 };
 
-int ical2ccal_load_events(struct ccal_calendar *cal, icalcomponent *ical_root, char *calendar_name, int log_level);
+int ical2ccal_load_events(struct ccal_calendar *cal, icalcomponent *ical_root, char *calendar_name, char **blacklist, int blacklist_size, int log_level);
 
 #endif
