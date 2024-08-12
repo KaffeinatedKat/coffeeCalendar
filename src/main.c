@@ -61,7 +61,6 @@ void render_calendar(struct ccal_calendar cal, lv_obj_t *cont, struct config_opt
     // time 
     time_t t = time(NULL);
     struct tm date = *localtime(&t);
-    date.tm_mday = 2;
     int16_t current_year = date.tm_year + 1900;
     int8_t current_month = date.tm_mon + 1;
     int8_t current_day = date.tm_mday;

@@ -265,6 +265,10 @@ int config_create(struct config_options *config, char *config_location) {
     get_config_value(&config_list, "log_level", INT, &values);
     config->log_level = values.val.number;
 
+    get_config_value(&config_list, "event_name_blacklist", LIST, &values);
+    config->event_blacklist = values.val.array;
+    config->event_blacklist_size = values.array_size;
+
     if (color_size != calendar_size) {
         values.err = CAL_COLOR_SIZE_MISMATCH;
         print_config_error(&values);
