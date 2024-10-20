@@ -88,8 +88,9 @@ int parse_value(char *pair, int type, struct values *values) {
     int list_elements = 0;
     bool brk = false;
 
-    strsep(&pair, "=");
-    tok = strsep(&pair, "=");
+    int pair_len = strlen(pair);
+    p1 = strchr(pair, '=');
+    tok = strndup(p1 + 1, pair_len - (p1 - pair));
 
     switch (type) {
     case LIST:

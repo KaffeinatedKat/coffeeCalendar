@@ -46,7 +46,7 @@ void render_info_bar(struct info_bar_data *data, lv_obj_t *cont, struct config_o
     lv_obj_set_align(sync_label, LV_ALIGN_CENTER);
 
     lv_obj_t *version_label = lv_label_create(info_bar);
-    lv_label_set_text(version_label, "coffeeCalendar Beta v1.2.4");
+    lv_label_set_text(version_label, "coffeeCalendar Beta v1.2.5");
     lv_obj_set_style_text_color(version_label, lv_color_hex(0xffffff), 0);
     lv_obj_set_align(version_label, LV_ALIGN_LEFT_MID);
 
@@ -254,7 +254,7 @@ int main(int argc, char *argv[])
     int err = 0;
     time_t rawtime;
 
-    printf("coffeeCalendar Beta v1.2.4\n\n");
+    printf("coffeeCalendar Beta v1.2.5\n\n");
 
     // Load file storage path into config
     struct config_options config = {0};
