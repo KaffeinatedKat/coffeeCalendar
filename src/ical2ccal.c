@@ -39,13 +39,14 @@ struct events_status process_event(struct ccal_calendar *cal, icalcomponent *eve
     local_zone = icaltimezone_get_builtin_timezone("localtime");
     epoch_time = icaltime_as_timet_with_zone(start_time, local_zone);
     time_info = gmtime(&epoch_time);
-    // Event date
-    ccal_event.date = *time_info;
 
     // Change event timezone if it's not in the current zone
     if (start_time.zone && strcmp(icaltimezone_get_tzid((icaltimezone*)start_time.zone), "UTC") == 0) {
         time_info = localtime(&epoch_time);
     }
+
+    // Event date
+    ccal_event.date = *time_info;
 
     // All day / Start time info
     if (icaltime_is_date(start_time) != 0) {
